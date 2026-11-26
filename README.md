@@ -37,38 +37,47 @@ si ton dos est droit, si ta garde est haute…
 | **Héros** | Niveau, rang, radar des stats, titres, trophées ; accès aux progrès (poids, records, historique) |
 | **Bien-être** | Respiration guidée (cohérence cardiaque, carrée, 4-7-8), routines de mobilité, suivi du sommeil |
 
-## Utiliser l'app
+## Mettre l'app en ligne (une seule fois, 5 minutes, gratuit)
 
-### Sur ton téléphone (recommandé)
+L'app est un site statique : il suffit de l'héberger en **HTTPS** (obligatoire pour la caméra et l'installation).
+Ensuite, **la même adresse marche sur téléphone, tablette et PC**.
 
-La caméra d'un navigateur ne fonctionne qu'en **HTTPS**. Il faut donc héberger l'app — gratuitement :
+### Option A — GitHub Pages (le plus simple, dépôt public)
+1. Fusionne la pull request dans `main`.
+2. Dépôt → *Settings* → *General* → tout en bas *Change visibility* → **Public**
+   (le code ne contient aucune donnée perso ; tes données restent sur tes appareils).
+3. *Settings* → *Pages* → *Build and deployment* → *Deploy from a branch* → `main` / `(root)` → *Save*.
+4. 1-2 minutes plus tard : **`https://jjkfgdgdgdg.github.io/recomp/`**
 
-**Option A — GitHub Pages (le plus simple, nécessite un dépôt public)**
-1. Fusionne cette branche dans `main`.
-2. Dépôt → *Settings* → *Pages* → *Build and deployment* → *Deploy from a branch* → `main` / `(root)` → *Save*.
-3. Après 1-2 minutes, l'app est en ligne sur `https://<ton-pseudo>.github.io/recomp/`.
+### Option B — Cloudflare Pages ou Netlify (gratuit, le dépôt peut rester privé)
+1. Crée un compte gratuit sur [pages.cloudflare.com](https://pages.cloudflare.com) ou [netlify.com](https://www.netlify.com) (connexion avec GitHub).
+2. *Ajouter un site* → *Importer depuis GitHub* → `recomp`, branche `main`.
+3. Commande de build : **aucune** · Dossier publié : **`/`** (racine). Les fichiers `netlify.toml` et `_headers` sont déjà prêts.
+4. Tu obtiens une adresse en `https://…pages.dev` ou `https://…netlify.app`. Chaque fusion dans `main` met l'app à jour.
 
-> GitHub Pages n'est gratuit que pour les dépôts **publics**. Ton dépôt est privé : soit tu le passes en public
-> (aucune donnée perso dedans), soit tu utilises l'option B.
+## Installer l'app sur tes appareils
 
-**Option B — Cloudflare Pages ou Netlify (gratuit, marche avec un dépôt privé)**
-1. Crée un compte gratuit sur [pages.cloudflare.com](https://pages.cloudflare.com) ou [netlify.com](https://www.netlify.com).
-2. « Importer depuis GitHub » → choisis `recomp`.
-3. Commande de build : *aucune* · Dossier publié : `/` (racine).
+Ouvre l'adresse de l'app, puis :
 
-Ensuite, ouvre le lien sur ton téléphone puis :
-- **Android (Chrome)** : menu ⋮ → *Installer l'application*.
-- **iPhone (Safari)** : bouton *Partager* → *Sur l'écran d'accueil*.
+| Appareil | Comment |
+| --- | --- |
+| **Android** | Bouton **Installer** dans l'app (bandeau sur l'accueil ou icône ⬇ en haut), ou Chrome ⋮ → *Installer l'application* |
+| **iPhone / iPad** | Safari → bouton *Partager* → *Sur l'écran d'accueil* |
+| **PC Windows / Linux** | Chrome ou Edge → icône d'installation dans la barre d'adresse (ou bouton **Installer** dans l'app). Recomp arrive dans le menu Démarrer |
+| **Mac** | Chrome/Edge : icône d'installation · Safari (Sonoma+) : *Fichier → Ajouter au Dock* |
 
-Une fois installée, l'app fonctionne même hors connexion.
+- **Du PC vers le téléphone** : page *Installer* de l'app → *Partager le lien*, ou dans Chrome/Edge clic droit → *Créer un code QR pour cette page* et scanne-le.
+- **Transférer tes données** : *Profil → Mes données → Exporter* sur l'ancien appareil, puis *Importer* sur le nouveau.
+- **Mises à jour** : automatiques ; un bandeau propose de recharger quand une nouvelle version est prête.
+- Une fois installée, l'app fonctionne **hors connexion** (le modèle du squelette est mis en cache au premier usage de la caméra).
 
-### Sur ton ordinateur
+### Juste sur ton ordinateur, sans hébergement
 
 ```bash
 npm start          # puis ouvre http://localhost:8080
 ```
 
-(Node.js 18+ suffit, aucune dépendance à installer. La caméra fonctionne sur `localhost`.)
+(Node.js 18+ suffit, aucune dépendance. La caméra fonctionne sur `localhost`, pas sur l'adresse réseau du PC depuis un téléphone.)
 
 ## Conseils pour le coach caméra
 
@@ -103,8 +112,10 @@ tests/         → tests (node --test)
 ```
 
 ```bash
-npm test
+npm test           # tests automatiques (aussi lancés par GitHub Actions sur chaque pull request)
 ```
+
+Checklist des tests à faire à la main sur de vrais appareils : [`TESTS-MANUELS.md`](TESTS-MANUELS.md).
 
 Si tu ajoutes un fichier JS, ajoute-le aussi à la liste `SHELL` de `sw.js` (un test le vérifie) et change `VERSION`.
 

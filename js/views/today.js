@@ -11,6 +11,7 @@ import { typeBadge, sessionList } from './common.js';
 import { navigate } from '../router.js';
 import { MT_TIPS } from '../data/muaythai.js';
 import { playerMini, questsCard } from './quests.js';
+import { installBanner } from './install.js';
 import { award, bump } from '../game/service.js';
 import { SPLIT } from '../game/leveling.js';
 
@@ -40,6 +41,8 @@ export function renderToday(root) {
     h('div', { class: 'streak', title: 'Série de jours actifs' }, icon('flame', 18), h('b', null, st), h('span', null, 'jour' + (st > 1 ? 's' : '')))));
 
   root.append(playerMini());
+  const banner = installBanner(s.settings, () => renderToday(root));
+  if (banner) root.append(banner);
 
   // ---- Semaine
   const wk = weekDoneCount(iso);

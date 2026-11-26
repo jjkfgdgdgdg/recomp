@@ -1,0 +1,12 @@
+# En-têtes pour Netlify et Cloudflare Pages (ignoré par GitHub Pages).
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+/vendor/mediapipe/wasm/*.wasm
+  Content-Type: application/wasm
+/*
+  Permissions-Policy: camera=(self), microphone=()
+  X-Content-Type-Options: nosniff

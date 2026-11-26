@@ -675,3 +675,28 @@ body.bare .view { padding-top: calc(env(safe-area-inset-top) + 16px); padding-bo
 .trophy small { font-weight: 800; }
 
 .boss-fight.ended .bf-player, .boss-fight.ended .bf-movebox, .boss-fight.ended .hud-feedback, .boss-fight.ended .bf-dmg-layer { display: none; }
+
+/* ---------- Installation & mises à jour ---------- */
+.install-status { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.install-status > div { flex: 1; min-width: 220px; }
+.install-ok { font-size: 2.2rem; flex: none !important; min-width: 0 !important; }
+.install-steps { padding-left: 20px; }
+.install-steps li { margin: 6px 0; }
+.install-guide summary { cursor: pointer; font-weight: 800; }
+.install-banner { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.link-box { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; padding: 10px 12px; border-radius: 10px; background: var(--surface2); word-break: break-all; margin: 6px 0 10px; user-select: all; }
+#update-bar {
+  position: fixed; z-index: 350; left: 12px; right: 12px; top: calc(env(safe-area-inset-top) + 10px); margin: 0 auto; max-width: 520px;
+  display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--accent); box-shadow: var(--shadow); font-weight: 700; font-size: 0.9rem;
+}
+.topbar .row { gap: 2px; }
+
+/* ---------- Grands écrans (PC, tablette en paysage) ---------- */
+@media (min-width: 900px) {
+  .view, .topbar { max-width: 760px; }
+  .tabbar { justify-content: center; gap: 8px; }
+  .tab { max-width: 140px; font-size: 0.8rem; }
+  .coach-place, .coach-summary { max-width: 520px; }
+  .bf-boss { left: 50%; right: auto; transform: translateX(-50%); width: min(620px, calc(100% - 20px)); }
+}

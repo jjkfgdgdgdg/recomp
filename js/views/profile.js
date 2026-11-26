@@ -46,11 +46,9 @@ export function renderProfile(root) {
 
   // ---- Installer
   root.append(h('section', { class: 'card soft' },
-    h('div', { class: 'card-title' }, '📲 Installer l’app sur ton téléphone'),
-    h('ul', { class: 'bullets small' },
-      h('li', null, 'Android (Chrome) : menu ⋮ → « Installer l’application ».'),
-      h('li', null, 'iPhone (Safari) : bouton Partager → « Sur l’écran d’accueil ».'),
-      h('li', null, 'Une fois installée, l’app marche même hors connexion.'))));
+    h('div', { class: 'card-title' }, '📲 Installer l\u2019app (téléphone, tablette, PC)'),
+    h('p', { class: 'small muted' }, 'Une seule adresse pour tous tes appareils. Installation en un clic, fonctionne hors connexion.'),
+    h('button', { class: 'btn ghost', onclick: () => navigate('#/install') }, 'Installer / envoyer sur un autre appareil')));
 
   // ---- Données
   const fileInput = h('input', {

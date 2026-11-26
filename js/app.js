@@ -17,6 +17,8 @@ import { renderHero } from './views/hero.js';
 import { renderAcademy, renderGuide } from './views/academy.js';
 import { renderLibrary, renderExercise } from './views/library.js';
 import { ensureGame, checkTitles } from './game/service.js';
+import { renderInstall } from './views/install.js';
+import { registerServiceWorker, onUpdateReady, installState, onInstallChange } from './install.js';
 
 load();
 
@@ -44,8 +46,11 @@ function renderTop(path) {
   clear(topbar);
   topbar.append(
     h('a', { href: '#/today', class: 'brand', 'aria-label': 'Accueil Recomp' }, h('span', { class: 'brand-mark' }, 'R'), 'Recomp'),
-    h('a', { href: '#/profile', class: `icon-btn${path === '/profile' ? ' on' : ''}`, 'aria-label': 'Profil et réglages' }, icon('user')));
+    h('div', { class: 'row' },
+      installState().installed ? null : h('a', { href: '#/install', class: `icon-btn${path === '/install' ? ' on' : ''}`, 'aria-label': 'Installer l\u2019app', title: 'Installer l\u2019app' }, icon('download')),
+      h('a', { href: '#/profile', class: `icon-btn${path === '/profile' ? ' on' : ''}`, 'aria-label': 'Profil et réglages' }, icon('user'))));
 }
+onInstallChange(() => { if (!document.body.classList.contains('bare')) renderTop(currentPath()); });
 
 // Enveloppe chaque écran : vérifie le profil, gère la coquille, remonte en haut.
 function screen(render, { shell = true, needsProfile = true } = {}) {
@@ -86,6 +91,7 @@ route('/academy', screen(renderAcademy));
 route('/guide/:id', screen(renderGuide));
 route('/library', screen(renderLibrary));
 route('/exercise/:id', screen(renderExercise));
+route('/install', screen(renderInstall, { needsProfile: false }));
 
 if (!getState().profile && currentPath() !== '/onboarding') {
   history.replaceState(null, '', '#/onboarding');
@@ -93,9 +99,11 @@ if (!getState().profile && currentPath() !== '/onboarding') {
 startRouter();
 if (getState().profile) setTimeout(() => checkTitles(), 800);
 
-// Service worker : fonctionnement hors ligne + installation sur l'écran d'accueil
-if ('serviceWorker' in navigator && location.protocol !== 'file:' && !navigator.webdriver) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW', e));
-  });
-}
+// Service worker : fonctionnement hors ligne, installation, et bandeau de mise à jour
+registerServiceWorker();
+onUpdateReady((reload) => {
+  if (document.getElementById('update-bar')) return;
+  document.body.append(h('div', { id: 'update-bar', role: 'status' },
+    h('span', null, '✨ Nouvelle version de Recomp disponible'),
+    h('button', { class: 'btn small primary', onclick: reload }, 'Mettre à jour')));
+});
