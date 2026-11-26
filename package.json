@@ -1,0 +1,12 @@
+{
+  "name": "recomp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Application de sport et bien-être 100 % gratuite avec coach caméra (squelette) — musculation, Muay Thai, mobilité.",
+  "type": "module",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "license": "MIT"
+}
