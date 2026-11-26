@@ -12,6 +12,7 @@ import { navigate } from '../router.js';
 import { MT_TIPS } from '../data/muaythai.js';
 import { playerMini, questsCard } from './quests.js';
 import { installBanner } from './install.js';
+import { weeklyCard } from './arena.js';
 import { award, bump } from '../game/service.js';
 import { SPLIT } from '../game/leveling.js';
 
@@ -56,6 +57,10 @@ export function renderToday(root) {
 
   // ---- Quêtes du jour
   root.append(questsCard(iso, () => renderToday(root)));
+
+  // ---- Boss de la semaine
+  const wk2 = weeklyCard(() => renderToday(root), { compact: true });
+  if (wk2) root.append(wk2);
 
   // ---- Séance du jour
   const session = sessionFor(iso);
@@ -129,6 +134,13 @@ export function renderToday(root) {
     h('button', { class: 'quick-btn', onclick: () => navigate('#/timer') }, h('span', null, '🥊'), 'Minuteur rounds'),
     h('button', { class: 'quick-btn', onclick: () => navigate('#/wellness') }, h('span', null, '🧘'), 'Respiration'),
     h('button', { class: 'quick-btn', onclick: () => navigate('#/library') }, h('span', null, '📚'), 'Exercices')));
+  if (!(s.settings.reminders?.notify) && !s.settings.remindersHint) {
+    root.append(h('section', { class: 'card soft row between' },
+      h('span', { class: 'small' }, '⏰ Un rappel pour ne jamais rater ta séance ?'),
+      h('div', { class: 'row gap' },
+        h('button', { class: 'btn small ghost', onclick: () => navigate('#/reminders') }, 'Configurer'),
+        h('button', { class: 'btn small ghost', 'aria-label': 'Masquer', onclick: () => { update((st) => { st.settings.remindersHint = true; }); renderToday(root); } }, '✕'))));
+  }
 
   const tip = TIPS[(weekday(iso) + new Date().getDate()) % TIPS.length];
   root.append(h('section', { class: 'card soft tip' }, h('b', null, '💡 Conseil du jour'), h('p', null, tip)));

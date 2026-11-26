@@ -98,6 +98,8 @@ export class Cycle {
     this.state = 'rest';
     this.peak = null;
     this.rebound = null;
+    this.startT = null; // début du mouvement
+    this.peakT = null; // moment où l'amplitude max est atteinte
   }
 
   get range() { return this.rest - this.target; }
@@ -112,29 +114,43 @@ export class Cycle {
     return this.peak !== null && this.peak <= this.target;
   }
 
-  update(v) {
+  // Durées de la rep (en secondes) : aller (départ -> amplitude max) et retour.
+  timing(end) {
+    if (this.startT === null || end === null || end === undefined) return {};
+    const peakT = this.peakT ?? end;
+    return { start: this.startT, end, there: (peakT - this.startT) / 1000, back: (end - peakT) / 1000 };
+  }
+
+  /** v = valeur mesurée, t = horodatage en ms (optionnel, pour le tempo). */
+  update(v, t = null) {
     if (v === null || v === undefined) return null;
     const x = v * this.sign;
     if (this.state === 'rest') {
+      // Dernier instant passé en position de départ = vrai début du mouvement (pour le tempo)
+      if (x >= this.rest || this.topT === undefined) this.topT = t;
       if (x < this.leave) {
         this.state = 'work';
         this.peak = x;
         this.rebound = x;
+        this.startT = this.topT ?? t;
+        this.peakT = t;
       }
       return null;
     }
     if (x < this.peak) {
       this.peak = x;
       this.rebound = x;
+      this.peakT = t;
     } else {
       this.rebound = Math.max(this.rebound, x);
     }
     if (x >= this.rest) {
       const peak = this.peak;
+      const tm = this.timing(t);
       this.state = 'rest';
       this.peak = null;
-      if (peak <= this.target) return { type: 'full', peak: peak * this.sign };
-      if (peak <= this.partial) return { type: 'partial', peak: peak * this.sign };
+      if (peak <= this.target) return { type: 'full', peak: peak * this.sign, ...tm };
+      if (peak <= this.partial) return { type: 'partial', peak: peak * this.sign, ...tm };
       return null;
     }
     // Remontée incomplète puis nouvelle descente (bras pas tendus en haut, par ex.)
@@ -142,9 +158,12 @@ export class Cycle {
       && this.rebound - this.peak > this.range * 0.45
       && x < this.rebound - this.range * 0.25) {
       const peak = this.peak;
+      const tm = this.timing(t);
       this.peak = x;
       this.rebound = x;
-      return { type: 'incomplete', peak: peak * this.sign };
+      this.startT = t;
+      this.peakT = t;
+      return { type: 'incomplete', peak: peak * this.sign, ...tm };
     }
     return null;
   }

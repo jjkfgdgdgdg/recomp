@@ -23,7 +23,7 @@ export const TYPE_META = {
   rest: { label: 'Repos', emoji: '😴', color: 'var(--c-rest)' },
 };
 
-const FOCUS_TITLE = {
+export const FOCUS_TITLE = {
   fullA: 'Full body A', fullB: 'Full body B', fullC: 'Full body C',
   upper: 'Haut du corps', lower: 'Bas du corps',
   push: 'Poussée (pecs, épaules, triceps)', pull: 'Tirage (dos, biceps)', legs: 'Jambes & fessiers',
@@ -499,7 +499,9 @@ export function generateSession(profile, state, iso, opts = {}) {
   const variant = (day.variant || 0) + wIdx;
 
   let main;
-  if (type === 'strength') main = strengthMain(focus, profile, progression, budget, variant);
+  const custom = type === 'strength' ? customItems(focus, profile, progression, state) : null;
+  if (custom) main = custom;
+  else if (type === 'strength') main = strengthMain(focus, profile, progression, budget, variant);
   else if (type === 'muaythai') main = mtMain(focus, profile, progression, budget, r);
   else if (type === 'cardio') main = cardioMain(focus, profile, progression, budget, r);
   else main = mobilityMain(profile, adjusted === 'recovery' ? Math.min(budget, 25) : budget, r, new Set(wu.items.map((i) => i.exId)));
@@ -533,9 +535,56 @@ export function generateSession(profile, state, iso, opts = {}) {
   const session = {
     id: iso, date: iso, type, focus, title, deload, adjusted, week: wIdx, blocks,
   };
-  fitToTime(session, adjusted === 'recovery' ? Math.min(minutes, 30) : minutes);
+  session.custom = !!custom;
+  // Une séance personnalisée garde tous les exercices choisis (pas de découpe automatique)
+  if (!custom) fitToTime(session, adjusted === 'recovery' ? Math.min(minutes, 30) : minutes);
   session.minutes = sessionMinutes(session);
   return session;
+}
+
+/**
+ * Séance de muscu personnalisée dans l'éditeur : state.custom.sessions[focus].items = [{ exId, sets }].
+ * Les reps et charges continuent de progresser automatiquement, et une variante au poids du corps
+ * débloquée par la progression (ex. pompes -> pompes diamant) remplace l'exercice d'origine.
+ */
+export function customItems(focus, profile, progression, state) {
+  const list = state.custom?.sessions?.[focus]?.items;
+  if (!list?.length) return null;
+  const items = [];
+  list.forEach(({ exId, sets }, i) => {
+    let ex = EX[exId];
+    if (!ex) return;
+    const slot = `${ex.pattern}:bw`;
+    const upgraded = progression?.variants?.[slot];
+    if (upgraded && !ex.weighted && EX[upgraded]) {
+      // on suit la chaîne de progression à partir de l'exercice choisi
+      let cur = ex; let guard = 0;
+      while (cur?.harder && guard < 6) { cur = EX[cur.harder]; guard += 1; if (cur?.id === upgraded) { ex = cur; break; } }
+    }
+    const item = makeSets(ex, profile, progression, { main: i < 3, slot });
+    if (sets) item.sets = Math.max(1, Math.min(10, sets));
+    items.push(item);
+  });
+  return items.length ? items : null;
+}
+
+/** Les séances possibles pour l'éditeur de semaine. */
+export const SESSION_OPTIONS = [
+  { type: 'rest', focus: 'rest' },
+  ...['fullA', 'fullB', 'fullC', 'upper', 'lower', 'push', 'pull', 'legs', 'fighter'].map((f) => ({ type: 'strength', focus: f })),
+  ...['technique', 'bag', 'pads', 'shadow', 'conditioning'].map((f) => ({ type: 'muaythai', focus: f })),
+  ...['hiit', 'rope', 'zone2'].map((f) => ({ type: 'cardio', focus: f })),
+  { type: 'mobility', focus: 'recovery' },
+].map((o) => ({ ...o, title: FOCUS_TITLE[o.focus] }));
+
+/** Remplace la séance d'un jour de la semaine (0 = lundi). */
+export function setDay(plan, day, focus) {
+  const opt = SESSION_OPTIONS.find((o) => o.focus === focus) || SESSION_OPTIONS[0];
+  const week = plan.week.map((d) => ({ ...d }));
+  week[day] = { type: opt.type, focus: opt.focus, title: opt.title };
+  const counters = {};
+  week.forEach((d) => { if (d.type !== 'rest') { counters[d.focus] = (counters[d.focus] || 0) + 1; d.variant = counters[d.focus] - 1; } });
+  return { ...plan, week, custom: true };
 }
 
 // Si la séance déborde du temps disponible : moins de séries, repos plus courts, puis moins d'exercices.

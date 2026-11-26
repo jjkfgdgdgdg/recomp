@@ -163,3 +163,60 @@ test('contenu : guides et fiches techniques complets', () => {
     assert.ok(t.mistakes.length && t.breath && t.tips.length, e.id);
   });
 });
+
+// Nouveaux exercices suivis : la démo animée doit être comptée par le tracker correspondant
+for (const [demo, tracker, expected] of [
+  ['pullup', 'pullup', 3], ['dips', 'dips', 3], ['row', 'row', 3], ['hinge', 'hinge', 3], ['pike', 'pike', 3],
+  ['leg_raise', 'leg_raise', 3], ['calf', 'calf', 3], ['mountain', 'mountain', 6], ['jumps', 'jumps', 3],
+]) {
+  test(`démo ${demo} : validée par le nouveau compteur ${tracker}`, () => {
+    const out = runDemo(demo, tracker);
+    assert.equal(out.reps, expected, `${demo}: ${out.reps} reps, ${out.partial} partielles`);
+  });
+}
+
+test('chaise contre le mur : le chrono avance en bonne position', () => {
+  const tr = TRACKERS.wall_sit.make();
+  for (let i = 0; i < 90; i += 1) tr.update(DEMOS.wall_sit.frame(0), i * 33);
+  assert.ok(tr.holdSec > 2.5, `hold=${tr.holdSec}`);
+});
+
+// ---------------------------------------------------------------- Boss de la semaine & défis
+import { weeklyEvent, eventHp, MODIFIERS } from '../js/game/bosses.js';
+import {
+  newChallenge, addScore, mergeChallenges, ranking, encodeChallenge, decodeChallenge,
+} from '../js/game/challenges.js';
+
+test('boss de la semaine : stable sur la semaine, change d’une semaine à l’autre, adapté au niveau', () => {
+  const a = weeklyEvent('2026-11-23', 3);
+  const b = weeklyEvent('2026-11-29', 3);
+  assert.equal(a.key, b.key);
+  assert.equal(a.boss.id, b.boss.id);
+  assert.equal(a.rank, 'E');
+  assert.equal(weeklyEvent('2026-11-23', 55).rank, 'A');
+  const keys = new Set();
+  for (let w = 0; w < 12; w += 1) keys.add(weeklyEvent(`2026-${String(1 + Math.floor(w / 4)).padStart(2, '0')}-${String(5 + (w % 4) * 7).padStart(2, '0')}`, 5).boss.id + weeklyEvent(`2026-${String(1 + Math.floor(w / 4)).padStart(2, '0')}-${String(5 + (w % 4) * 7).padStart(2, '0')}`, 5).modifier.id);
+  assert.ok(keys.size > 3, 'les événements varient');
+  const giant = { ...a, modifier: MODIFIERS.find((m) => m.id === 'giant') };
+  assert.ok(eventHp(a.boss, profile, 3, giant)[0] > eventHp(a.boss, profile, 3, { ...a, modifier: {} })[0]);
+});
+
+test('défis : création, scores, fusion et lien', () => {
+  let ch = newChallenge('push60', 'Lucas', '2026-11-26', () => 0.5);
+  ch = addScore(ch, { name: 'Lucas', value: 32, cam: true, date: '2026-11-26' });
+  const code = encodeChallenge(ch);
+  assert.match(code, /^[A-Za-z0-9_-]+\.[a-z0-9]+$/);
+  let friend = decodeChallenge(code);
+  friend = addScore(friend, { name: 'Inès', value: 41, cam: true, date: '2026-11-27' });
+  friend = addScore(friend, { name: 'Inès', value: 30, cam: true, date: '2026-11-28' }); // pire score ignoré
+  const merged = mergeChallenges(ch, decodeChallenge(encodeChallenge(friend)));
+  const r = ranking(merged);
+  assert.deepEqual(r.map((x) => [x.name, x.value]), [['Inès', 41], ['Lucas', 32]]);
+  // Un lien bricolé est refusé
+  const [data, sum] = code.split('.');
+  assert.throws(() => decodeChallenge(`${data}x.${sum}`));
+  assert.throws(() => decodeChallenge('n importe quoi'));
+  // Noms nettoyés (pas de HTML)
+  const evil = addScore(ch, { name: '<img src=x>', value: 5 });
+  assert.ok(!evil.s.some((x) => /[<>]/.test(x[0])));
+});

@@ -214,3 +214,48 @@ test('chaque exercice a des consignes et des liens valides', () => {
     if (e.easier) assert.ok(EX[e.easier], `${e.id}.easier`);
   });
 });
+
+import { customItems, setDay, SESSION_OPTIONS } from '../js/engine/planner.js';
+
+test('éditeur : séance de muscu personnalisée respectée et progression conservée', () => {
+  const p = { ...base, equipment: ['dumbbells'] };
+  const state = { plan: buildWeek(p), progression: emptyProgression(), custom: { sessions: { fullA: { items: [{ exId: 'pushup', sets: 5 }, { exId: 'db_curl', sets: 2 }, { exId: 'plank' }] } } } };
+  const day = state.plan.week.findIndex((d) => d.focus === 'fullA');
+  const iso = addDays('2026-11-23', day);
+  const s = generateSession(p, state, iso);
+  const main = s.blocks.find((b) => b.name === 'Bloc principal').items;
+  assert.deepEqual(main.map((i) => i.exId), ['pushup', 'db_curl', 'plank']);
+  assert.equal(main[0].sets, 5);
+  assert.ok(s.custom);
+  // une variante débloquée remplace l'exercice choisi
+  state.progression = { ex: {}, variants: { 'h_push:bw': 'diamond_pushup' } };
+  const items = customItems('fullA', p, state.progression, state);
+  assert.equal(items[0].exId, 'diamond_pushup');
+});
+
+test('éditeur : changer la séance d’un jour', () => {
+  const plan = buildWeek(base);
+  const next = setDay(plan, 6, 'technique');
+  assert.equal(next.week[6].type, 'muaythai');
+  assert.equal(next.custom, true);
+  assert.equal(setDay(next, 6, 'rest').week[6].type, 'rest');
+  assert.ok(SESSION_OPTIONS.every((o) => o.title));
+});
+
+import { buildIcs, googleCalendarUrl } from '../js/reminders.js';
+
+test('rappels : fichier agenda valide avec séances récurrentes et alarme', () => {
+  const state = { profile: { ...base, sessionMinutes: 45 }, plan: buildWeek(base) };
+  const ics = buildIcs(state, { session: '18:30', quests: '20:30' }, new Date('2026-11-26T10:00:00Z'), 'https://exemple.test/recomp/');
+  assert.ok(ics.startsWith('BEGIN:VCALENDAR\r\n'));
+  assert.ok(ics.trim().endsWith('END:VCALENDAR'));
+  assert.match(ics, /RRULE:FREQ=WEEKLY;BYDAY=MO,TU,TH,FR/);
+  assert.match(ics, /DTSTART:\d{8}T183000/);
+  assert.match(ics, /DURATION:PT45M/);
+  assert.match(ics, /TRIGGER:-PT10M/);
+  assert.match(ics, /RRULE:FREQ=DAILY/);
+  assert.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 2);
+  const g = googleCalendarUrl(state, '18:30', 'https://exemple.test/');
+  assert.ok(g.startsWith('https://calendar.google.com/calendar/render?'));
+  assert.ok(decodeURIComponent(g).includes('RRULE:FREQ=WEEKLY;BYDAY=MO,TU,TH,FR'));
+});

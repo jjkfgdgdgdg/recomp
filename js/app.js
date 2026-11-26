@@ -18,6 +18,10 @@ import { renderAcademy, renderGuide } from './views/academy.js';
 import { renderLibrary, renderExercise } from './views/library.js';
 import { ensureGame, checkTitles } from './game/service.js';
 import { renderInstall } from './views/install.js';
+import { renderChallenge, renderChallenges } from './views/challenge.js';
+import { renderEditor } from './views/editor.js';
+import { renderReminders } from './views/reminders.js';
+import { startReminderLoop } from './reminders.js';
 import { registerServiceWorker, onUpdateReady, installState, onInstallChange } from './install.js';
 
 load();
@@ -28,8 +32,8 @@ const topbar = document.getElementById('topbar');
 
 const TABS = [
   { path: '/today', label: 'Accueil', icon: 'home', also: ['/wellness', '/timer'] },
-  { path: '/plan', label: 'Programme', icon: 'calendar' },
-  { path: '/arena', label: 'Arène', icon: 'sword', also: ['/coach'] },
+  { path: '/plan', label: 'Programme', icon: 'calendar', also: ['/editor'] },
+  { path: '/arena', label: 'Arène', icon: 'sword', also: ['/coach', '/challenge'] },
   { path: '/academy', label: 'Académie', icon: 'book', also: ['/library', '/exercise', '/guide'] },
   { path: '/hero', label: 'Héros', icon: 'shield', also: ['/progress'] },
 ];
@@ -92,8 +96,12 @@ route('/guide/:id', screen(renderGuide));
 route('/library', screen(renderLibrary));
 route('/exercise/:id', screen(renderExercise));
 route('/install', screen(renderInstall, { needsProfile: false }));
+route('/challenge', screen(renderChallenge, { needsProfile: false }));
+route('/challenges', screen(renderChallenges));
+route('/editor', screen(renderEditor));
+route('/reminders', screen(renderReminders));
 
-if (!getState().profile && currentPath() !== '/onboarding') {
+if (!getState().profile && !['/onboarding', '/challenge', '/install'].includes(currentPath())) {
   history.replaceState(null, '', '#/onboarding');
 }
 startRouter();
@@ -101,6 +109,7 @@ if (getState().profile) setTimeout(() => checkTitles(), 800);
 
 // Service worker : fonctionnement hors ligne, installation, et bandeau de mise à jour
 registerServiceWorker();
+startReminderLoop();
 onUpdateReady((reload) => {
   if (document.getElementById('update-bar')) return;
   document.body.append(h('div', { id: 'update-bar', role: 'status' },

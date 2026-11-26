@@ -25,7 +25,8 @@ export function emptyGame() {
     equippedTitle: null,
     quests: {}, // date -> { manual: {questId: n}, claimed: bool, xpGiven: {questId: true} }
     bosses: {}, // bossId -> { wins, losses, bestTimeSec, bestGrade }
-    counters: { validReps: 0, perfectSets: 0, breathing: 0, bossWins: 0, questDays: 0, waterDays: 0, camSets: 0 },
+    counters: { validReps: 0, perfectSets: 0, breathing: 0, bossWins: 0, questDays: 0, waterDays: 0, camSets: 0, weeklyWins: 0, challenges: 0, challengeWins: 0 },
+    events: {}, // semaine -> { bossId, modifier, won, grade, tries }
     history: [], // { date, amount, reason }
   };
 }
@@ -134,6 +135,11 @@ export const TITLES = [
   { id: 'rank_s', name: 'Légende', emoji: '🔴', desc: 'Atteindre le rang S', check: (c) => c.level >= 70 },
   { id: 'nak_muay', name: 'Nak Muay', emoji: '🥊', desc: '10 séances de Muay Thai', check: (c) => c.state.logs.sessions.filter((s) => s.type === 'muaythai').length >= 10 },
   { id: 'iron_guard', name: 'Garde de fer', emoji: '🛡️', desc: 'Un shadow avec 90 %+ de garde haute', check: (c) => c.state.logs.coach.some((x) => x.trackerId === 'guard' && x.score >= 90 && (x.durationSec || 0) >= 60) },
+  { id: 'weekly1', name: 'Chasseur de la semaine', emoji: '📅', desc: 'Vaincre un boss de la semaine', check: (c) => (c.game.counters.weeklyWins || 0) >= 1 },
+  { id: 'weekly4', name: 'Fléau hebdomadaire', emoji: '🗓️', desc: 'Vaincre 4 boss de la semaine', check: (c) => (c.game.counters.weeklyWins || 0) >= 4 },
+  { id: 'challenger', name: 'Défieur', emoji: '👥', desc: 'Lancer ou relever 3 défis entre amis', check: (c) => (c.game.counters.challenges || 0) >= 3 },
+  { id: 'champion', name: 'Roi du défi', emoji: '👑', desc: 'Finir premier d\u2019un défi à 3 joueurs ou plus', check: (c) => (c.game.counters.challengeWins || 0) >= 1 },
+  { id: 'slowmo', name: 'Maître du tempo', emoji: '🐢', desc: 'Une série de 10+ reps sans aucune rep trop rapide', check: (c) => c.state.logs.coach.some((x) => (x.reps || 0) >= 10 && x.tempo && x.tempo.fast === 0 && x.tempo.ecc >= 1.5) },
   { id: 'early', name: 'Lève-tôt', emoji: '🌅', desc: 'Une séance terminée avant 8 h', check: (c) => c.state.logs.sessions.some((s) => s.completedAt && new Date(s.completedAt).getHours() < 8) },
 ];
 

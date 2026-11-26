@@ -156,3 +156,40 @@ Questionnaire en plusieurs étapes, avec barre de progression, modifiable à tou
 - **12 guides** : règles de la prise de muscle, séries/reps/repos, poids du corps, nutrition, compléments,
   récupération, Muay Thai (les 8 armes, condition physique), échauffement/blessures, plateau, mythes, mesures.
 - **Carte musculaire** : séries par muscle sur 7 jours (objectif 10-20) pour repérer les muscles en retard.
+
+---
+
+## V3 — Encore plus de caméra, tempo, événements, défis, éditeur, photos et rappels
+
+### 13. Exercices suivis par la caméra (27 compteurs)
+Ajout : tractions (menton au-dessus de la barre), dips, rowing (buste immobile), soulevé de terre roumain
+(genoux presque tendus), kettlebell swing, pompes piquées, mountain climbers, relevés de jambes (jambes tendues)
+et de genoux suspendu, chaise contre le mur (chrono), mollets, corde à sauter (comptage des sauts).
+Chaque nouveau compteur a sa démo animée, validée automatiquement par les tests.
+
+### 14. Tempo des reps
+- Mesure de la phase « aller », de la phase « retour » (excentrique), de la pause entre les reps et de la cadence.
+- Alerte vocale « contrôle la descente » si le retour dure moins de 0,4 s (la rep compte, mais vaut moins de dégâts en combat).
+- Mode **tempo lent** : le retour doit durer au moins 1,5 s, sinon la rep ne compte pas.
+- Résumé : moyennes + graphique de la durée de chaque rep.
+
+### 15. Boss de la semaine
+Chaque lundi, un boss et un modificateur (Enragé, Blindé, Fièvre du combo, Géant, Lenteur mortelle, Contre-la-montre),
+identiques pour tout le monde, adaptés au rang du joueur, XP ×2 (×3 pour Géant). Titres dédiés.
+
+### 16. Défis entre amis (sans serveur)
+Défis : pompes / squats / jumping jacks / burpees / coups de pied en 1 minute, max tractions, gainage, chaise.
+Le défi et le classement voyagent dans le lien partagé (encodé + somme de contrôle) : chaque ami ajoute son score
+(✅ validé caméra ou ✍️ déclaré) et renvoie le lien. Aucun compte, aucune base de données.
+
+### 17. Éditeur de programme
+Choix de la séance de chaque jour ; pour les séances de muscu : remplacer, ajouter, retirer, réordonner les exercices
+et régler les séries. La progression automatique (reps, charges, variantes) continue sur les exercices choisis.
+
+### 18. Photos de progression (optionnel)
+Désactivées par défaut. Stockées uniquement dans le navigateur (IndexedDB), jamais envoyées ni exportées.
+Poses face / profil / dos, rappel toutes les 4 semaines, comparateur avant / après à curseur, suppression totale.
+
+### 19. Rappels
+Agenda (.ics pour iPhone / Mac / Outlook, lien Google Agenda) avec alarmes pour les séances et les quêtes ;
+notifications de l'app à l'heure choisie (app ouverte) et en arrière-plan quand le navigateur le permet.

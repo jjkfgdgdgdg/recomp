@@ -1,5 +1,7 @@
 // Combats de boss : plus l'exercice est bien fait (validé par la caméra), plus tu infliges de dégâts.
 import { testValue } from '../engine/progression.js';
+import { hashString } from '../engine/random.js';
+import { mondayOf, addDays } from '../engine/dates.js';
 
 export const RANK_MULT = { E: 0.8, D: 1, C: 1.25, B: 1.5, A: 1.8, S: 2.2 };
 export const BASE_DMG = 10;
@@ -112,8 +114,8 @@ export function bossHp(boss, profile, level) {
   return boss.phases.map((ph) => phaseHp(ph, profile, level, boss.rank));
 }
 
-export function comboMult(combo) {
-  return 1 + Math.min(1, combo / 20);
+export function comboMult(combo, max = 2) {
+  return 1 + Math.min(max - 1, combo / 20);
 }
 
 /**
@@ -121,14 +123,16 @@ export function comboMult(combo) {
  * - rep valide : 10 × qualité × combo × force ; critique possible sur une rep parfaite
  * - rep ratée (amplitude/posture) : 2 dégâts et le combo retombe à 0
  */
-export function repDamage({ valid, score = 100, combo = 0, str = 1, tec = 1, random = Math.random, manual = false }) {
+export function repDamage({
+  valid, score = 100, combo = 0, str = 1, tec = 1, random = Math.random, manual = false, critMult = 2, comboMax = 2,
+}) {
   if (!valid) return { dmg: 2, crit: false, miss: true };
   const quality = Math.max(0.5, Math.min(1, score / 100));
-  let dmg = BASE_DMG * quality * comboMult(combo) * (1 + (str - 1) * 0.02);
+  let dmg = BASE_DMG * quality * comboMult(combo, comboMax) * (1 + (str - 1) * 0.02);
   if (manual) dmg *= 0.6;
   const critChance = manual ? 0 : (score >= 100 ? 0.15 : 0.05) + (tec - 1) * 0.01;
   const crit = random() < critChance;
-  if (crit) dmg *= 2;
+  if (crit) dmg *= critMult;
   return { dmg: Math.round(dmg), crit, miss: false };
 }
 
@@ -167,4 +171,42 @@ export function bossXp(boss, won, g) {
 
 export function bossUnlocked(boss, level) {
   return level >= boss.minLevel;
+}
+
+// ---------------------------------------------------------------------------
+// Boss de la semaine : un boss + un modificateur, adapté au niveau du joueur, XP ×2
+// ---------------------------------------------------------------------------
+export const MODIFIERS = [
+  { id: 'enraged', name: 'Enragé', emoji: '😡', desc: 'Il attaque 35 % plus souvent. Enchaîne sans t\u2019arrêter !', attackFactor: 0.65 },
+  { id: 'armored', name: 'Blindé', emoji: '🛡️', desc: 'Carapace épaisse (PV ×1,3) mais les coups critiques font ×3 : vise la rep parfaite.', hpMult: 1.3, critMult: 3 },
+  { id: 'combo', name: 'Fièvre du combo', emoji: '🔥', desc: 'Le combo peut monter jusqu\u2019à ×3. Une rep ratée et tout retombe…', comboMax: 3 },
+  { id: 'giant', name: 'Géant', emoji: '🗿', desc: 'PV ×1,6, mais XP ×3 au lieu de ×2.', hpMult: 1.6, xpMult: 3 },
+  { id: 'slow', name: 'Lenteur mortelle', emoji: '🐢', desc: 'Seules les reps au tempo lent (2 s au retour) font des dégâts. Parfait pour le muscle.', tempo: 'slow', hpMult: 0.8 },
+  { id: 'sprint', name: 'Contre-la-montre', emoji: '⏱️', desc: 'Bats-le en moins de 5 minutes, sinon il s\u2019enfuit.', timeLimit: 300, hpMult: 0.85 },
+];
+
+const RANK_BY_LEVEL = [[70, 'S'], [50, 'A'], [35, 'B'], [20, 'C'], [10, 'D'], [1, 'E']];
+
+export function weekKey(iso) {
+  return mondayOf(iso);
+}
+
+/** Événement de la semaine (identique pour tout le monde la même semaine, difficulté selon le niveau). */
+export function weeklyEvent(iso, level = 1, { muaythai = false } = {}) {
+  const key = weekKey(iso);
+  const h = hashString(`recomp-week-${key}`);
+  const pool = BOSSES.filter((b) => !b.mt || muaythai);
+  const boss = pool[h % pool.length];
+  const modifier = MODIFIERS[Math.floor(h / 7) % MODIFIERS.length];
+  const rank = RANK_BY_LEVEL.find(([min]) => level >= min)[1];
+  return {
+    key, boss, modifier, rank,
+    xpMult: modifier.xpMult || 2,
+    endsOn: addDays(key, 7),
+  };
+}
+
+export function eventHp(boss, profile, level, ev) {
+  const hp = boss.phases.map((ph) => phaseHp(ph, profile, level, ev.rank));
+  return hp.map((x) => Math.round(x * (ev.modifier.hpMult || 1)));
 }

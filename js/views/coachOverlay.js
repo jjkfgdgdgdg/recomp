@@ -45,6 +45,7 @@ export function openCoach(opts) {
   const targetEl = h('div', { class: 'hud-target' }, '');
   const partialEl = h('div', { class: 'hud-partial' }, '');
   const metricEl = h('div', { class: 'hud-metric' }, '');
+  const tempoEl = h('div', { class: 'hud-tempo' }, '');
   const gaugeFill = h('div', { class: 'gauge-fill' });
   const gauge = h('div', { class: 'hud-gauge', title: 'Amplitude' }, gaugeFill);
   gauge.hidden = true;
@@ -53,7 +54,7 @@ export function openCoach(opts) {
   const comboEl = h('div', { class: 'hud-combo' }, '');
   const fpsEl = h('div', { class: 'hud-fps' }, '');
   const hud = h('div', { class: 'coach-hud' },
-    h('div', { class: 'hud-topleft' }, h('div', { class: 'hud-countwrap' }, countEl, targetEl), partialEl, metricEl),
+    h('div', { class: 'hud-topleft' }, h('div', { class: 'hud-countwrap' }, countEl, targetEl), partialEl, metricEl, tempoEl),
     gauge, comboEl, bigMsg, feedbackEl, fpsEl);
 
   const stage = createStage({
@@ -149,6 +150,7 @@ export function openCoach(opts) {
 
   function begin() {
     tracker = def.make();
+    if (opts.tempo) tracker.setTempo?.(opts.tempo);
     active = true;
     gauge.hidden = def.mode !== 'reps';
     startedAt = performance.now();
@@ -225,6 +227,7 @@ export function openCoach(opts) {
   function handleEvents(st) {
     const hard = getState().settings.persona === 'hardcore';
     for (const ev of st.events) {
+      if (ev.type === 'rep' && ev.tempo) tempoEl.textContent = tempoText(ev.tempo);
       if (ev.type === 'rep' && ev.valid) {
         beep(880, 0.08, 0.2);
         vibrate(40);
@@ -244,6 +247,8 @@ export function openCoach(opts) {
         beep(220, 0.18, 0.25, 'triangle');
         talk(ev.msg, { interrupt: true, minGap: 2500 });
         if (hard && Math.random() < 0.35) say('bad', { queue: true });
+      } else if (ev.type === 'cue' && ev.tempo) {
+        talk(ev.msg, { queue: true, minGap: 6000 });
       } else if (ev.type === 'cue') {
         talk(ev.msg, { minGap: 3500 });
       }
@@ -301,6 +306,7 @@ export function openCoach(opts) {
         s.topErrors.map((e) => h('div', { class: 'err' }, `• ${e.msg} (${e.n}×)`)))
         : nothing ? h('p', { class: 'muted' }, 'Rien de détecté. Vérifie que tout ton corps est dans l’image et suis les conseils de placement.')
           : h('p', { class: 'muted' }, 'Aucune erreur détectée, technique propre ! 👌'),
+      s.tempo && def.mode === 'reps' ? tempoBlock(s.tempo) : null,
       h('div', { class: 'row gap' },
         h('button', { class: 'btn ghost light', onclick: () => restart() }, 'Recommencer'),
         h('button', { class: 'btn primary', onclick: () => close(s) }, 'Valider')));
@@ -337,12 +343,39 @@ export function openCoach(opts) {
   return { close: () => close(null) };
 }
 
+const f1 = (v) => (v === null || v === undefined ? '–' : String(v).replace('.', ','));
+
+function tempoText(tm) {
+  const parts = [`⏱ retour ${f1(tm.ecc)} s`, `effort ${f1(tm.con)} s`];
+  if (tm.rest !== null && tm.rest !== undefined) parts.push(`pause ${f1(tm.rest)} s`);
+  return parts.join(' · ');
+}
+
+function tempoBlock(t) {
+  const max = Math.max(1, ...t.totals.map((x) => x.total));
+  return h('div', { class: 'sum-tempo' },
+    h('div', { class: 'muted small' }, '⏱️ Tempo de tes reps'),
+    h('div', { class: 'tempo-stats' },
+      h('div', null, h('b', null, `${f1(t.ecc)} s`), h('span', null, 'retour (excentrique)')),
+      h('div', null, h('b', null, `${f1(t.con)} s`), h('span', null, 'effort')),
+      h('div', null, h('b', null, t.rest === null ? '–' : `${f1(t.rest)} s`), h('span', null, 'pause entre reps')),
+      h('div', null, h('b', null, t.cadence ?? '–'), h('span', null, 'reps / min'))),
+    h('div', { class: 'tempo-bars', 'aria-label': 'Durée de chaque rep' }, t.totals.map((x) => h('i', {
+      class: !x.valid ? 'bad' : t.check && x.ecc < 0.4 ? 'fast' : 'ok',
+      style: { height: `${Math.max(8, (x.total / max) * 100)}%` },
+      title: `${f1(x.total)} s`,
+    }))),
+    t.check && t.fast ? h('div', { class: 'small warn-text' }, `${t.fast} rep${t.fast > 1 ? 's' : ''} trop rapide${t.fast > 1 ? 's' : ''} au retour : vise 2 secondes pour plus de muscle.`)
+      : t.check ? h('div', { class: 'small good-text' }, 'Bon contrôle du mouvement 👌') : null);
+}
+
 function saveCoachLog(s) {
   let record = false;
   update((state) => {
     state.logs.coach.push({
       date: s.date, trackerId: s.trackerId, exId: s.exId, reps: s.reps, partial: s.partial, holdSec: s.holdSec,
       score: s.score, punches: s.punches, kicks: s.kicks, topErrors: s.topErrors, durationSec: s.durationSec, test: s.test,
+      tempo: s.tempo ? { ecc: s.tempo.ecc, con: s.tempo.con, rest: s.tempo.rest, cadence: s.tempo.cadence, fast: s.tempo.fast } : null,
     });
     if (state.logs.coach.length > 500) state.logs.coach.splice(0, state.logs.coach.length - 500);
     const prev = state.records[s.trackerId] || {};

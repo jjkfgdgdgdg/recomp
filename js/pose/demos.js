@@ -237,6 +237,64 @@ export function frontFrame({ armsUp = false, legsOpen = false, elbowL = 170, elb
   return pts;
 }
 
+
+// ---------------------------------------------------------------- Nouveaux mouvements
+export function pullupFrame(t) {
+  // vue de face, suspendu à une barre (y = 0.08) ; t : 0 bras tendus -> 1 menton au-dessus de la barre
+  const pts = blank();
+  const set = (i, p, v = 0.97) => { pts[i] = { x: p.x, y: p.y, v }; };
+  const bar = 0.08;
+  const shY = bar + 0.255 - 0.135 * t;
+  const sL = { x: 0.42, y: shY }; const sR = { x: 0.58, y: shY };
+  const wL = { x: 0.34, y: bar }; const wR = { x: 0.66, y: bar };
+  set(11, sL); set(12, sR); set(15, wL); set(16, wR);
+  set(13, ik(sL, wL, L.upper, L.fore, 1)); set(14, ik(sR, wR, L.upper, L.fore, -1));
+  set(0, { x: 0.5, y: shY - 0.13 });
+  set(23, { x: 0.45, y: shY + 0.27 }); set(24, { x: 0.55, y: shY + 0.27 });
+  set(25, { x: 0.45, y: shY + 0.47 }); set(26, { x: 0.55, y: shY + 0.47 });
+  set(27, { x: 0.46, y: shY + 0.66 }); set(28, { x: 0.54, y: shY + 0.66 });
+  set(31, { x: 0.45, y: shY + 0.69 }); set(32, { x: 0.55, y: shY + 0.69 });
+  return pts;
+}
+
+export function dipsFrame(t) {
+  // profil, mains sur des barres parallèles ; t : 0 bras tendus -> 1 en bas
+  const wr = { x: 0.5, y: 0.6 };
+  const sh = { x: 0.49, y: wr.y - 0.258 + 0.13 * t };
+  const hip = { x: sh.x - 0.05, y: sh.y + L.torso - 0.01 };
+  return sidePose({
+    hip, shoulder: sh, wrist: wr, elbowBend: 1,
+    ankle: { x: hip.x - 0.12, y: hip.y + 0.3 }, kneeBend: 1,
+  });
+}
+
+export function mountainFrame(t) {
+  // position de pompe, genoux ramenés à tour de rôle vers la poitrine
+  const base = pushupFrame(170);
+  const hip = base[23];
+  const drive = (k) => ({ knee: { x: hip.x - 0.17 * k, y: hip.y + 0.06 + 0.02 * k }, ankle: { x: hip.x - 0.04 * k + 0.17 * (1 - k), y: 0.84 } });
+  const kL = t < 0.5 ? Math.sin(t * 2 * Math.PI) : 0;
+  const kR = t >= 0.5 ? Math.sin((t - 0.5) * 2 * Math.PI) : 0;
+  const pts = base.map((p) => ({ ...p }));
+  const straightKnee = { ...base[25] }; const straightAnkle = { ...base[27] };
+  const leg = (k, ki, ai, v) => {
+    if (k <= 0.01) { pts[ki] = { ...straightKnee, v }; pts[ai] = { ...straightAnkle, v }; return; }
+    const d = drive(k);
+    pts[ki] = { x: straightKnee.x + (d.knee.x - straightKnee.x) * k, y: straightKnee.y + (d.knee.y - straightKnee.y) * k, v };
+    pts[ai] = { x: straightAnkle.x + (d.ankle.x - straightAnkle.x) * k, y: straightAnkle.y + (d.ankle.y - straightAnkle.y) * k, v };
+  };
+  leg(kL, 25, 27, 0.98);
+  leg(kR, 26, 28, 0.9);
+  [12, 14, 16, 24].forEach((i) => { pts[i] = { ...pts[i], v: 0.9 }; });
+  return pts;
+}
+
+export function jumpsFrame(t) {
+  const pts = frontFrame({ handsGuard: false, elbowL: 120, elbowR: 120 });
+  const dy = 0.035 * Math.max(0, Math.sin(t * 2 * Math.PI));
+  return pts.map((p) => ({ ...p, y: p.y - dy }));
+}
+
 // ---------------------------------------------------------------- Catalogue des démos
 // Chaque démo : { view, frames: (t:0..1 sur un cycle) -> points, cycle: secondes, cue: (t) -> texte, angle? }
 const pingpong = (t) => (t < 0.5 ? t * 2 : 2 - t * 2);
@@ -264,6 +322,10 @@ export const DEMOS = {
   knees: { view: 'Face', cycle: 1.6, frame: (t) => frontFrame({ kneeL: Math.sin(pingpong(t) * Math.PI / 2) * 1.2, handsGuard: true }), cue: (t) => (t < 0.5 ? 'Tire les mains, pousse la hanche' : 'Reviens en garde') },
   kicks: { view: 'Face', cycle: 1.6, frame: (t) => frontFrame({ kickL: hold(t, 0.1), handsGuard: true }), cue: (t) => (t < 0.5 ? 'Pivote, frappe avec le tibia' : 'Reviens vite en garde') },
   guard: { view: 'Face', cycle: 1.6, frame: (t) => frontFrame({ handsGuard: true, jabR: t < 0.35 ? Math.sin((t / 0.35) * Math.PI) : 0 }), cue: (t) => (t < 0.35 ? 'Jab : bras tendu, l’autre main protège' : 'Mains au visage, coudes serrés') },
+  pullup: { view: 'Face', cycle: 3, frame: (t) => pullupFrame(hold(t)), cue: (t) => (t < 0.5 ? 'Tire, menton au-dessus de la barre' : 'Redescends lentement, bras tendus'), joint: [11, 13, 15] },
+  dips: { view: 'Profil', cycle: 2.8, frame: (t) => dipsFrame(hold(t)), cue: (t) => (t < 0.5 ? 'Descends, coudes à 90°' : 'Pousse, bras tendus'), joint: [11, 13, 15] },
+  mountain: { view: 'Profil', cycle: 1.2, frame: (t) => mountainFrame(t), cue: () => 'Genoux vers la poitrine, hanches basses' },
+  jumps: { view: 'Face', cycle: 0.5, frame: (t) => jumpsFrame(t), cue: () => 'Petits sauts sur l\u2019avant du pied' },
   burpee: {
     view: 'Profil', cycle: 3.4,
     frame: (t) => {
@@ -286,20 +348,21 @@ export function lerpPose(a, b, t) {
 // Quelle démo pour quel exercice
 export const EXERCISE_DEMO = {
   pushup: 'pushup', knee_pushup: 'pushup', incline_pushup: 'pushup', diamond_pushup: 'pushup', decline_pushup: 'pushup', archer_pushup: 'pushup',
-  db_floor_press: 'press', db_bench_press: 'press', bench_press: 'press', dips: 'pushup', chair_dips: 'pushup',
+  db_floor_press: 'press', db_bench_press: 'press', bench_press: 'press', dips: 'dips', chair_dips: 'dips',
   pike_pushup: 'pike', db_shoulder_press: 'press', kb_press: 'press', band_press: 'press',
+  pullup: 'pullup', chinup_slow: 'pullup', negative_pullup: 'pullup',
   table_row: 'row', inverted_row: 'row', db_row: 'row', band_row: 'row', kb_row: 'row', cable_row: 'row',
   box_squat: 'squat', squat: 'squat', goblet_squat: 'squat', barbell_squat: 'squat', jump_squat: 'jump_squat', wall_sit: 'wall_sit',
   bulgarian_split_squat: 'lunge', pistol_squat: 'squat', bw_squat_warm: 'squat',
   glute_bridge: 'bridge', single_leg_bridge: 'bridge', hip_thrust: 'bridge',
   db_rdl: 'hinge', kb_swing: 'hinge', deadlift: 'hinge', good_morning: 'hinge',
   reverse_lunge: 'lunge', walking_lunge: 'lunge', db_lunge: 'lunge', step_up: 'lunge',
-  plank: 'plank', side_plank: 'plank', mountain_climbers: 'plank',
+  plank: 'plank', side_plank: 'plank', mountain_climbers: 'mountain',
   leg_raises: 'leg_raise', hanging_knee_raise: 'leg_raise',
   db_curl: 'curl', hammer_curl: 'curl', band_curl: 'curl',
   db_triceps_ext: 'press', band_triceps: 'curl',
   calf_raise: 'calf',
-  jumping_jacks: 'jacks', high_knees: 'high_knees', burpees: 'burpee', mt_sprawl: 'burpee', skater_jumps: 'jacks',
+  jumping_jacks: 'jacks', high_knees: 'high_knees', burpees: 'burpee', mt_sprawl: 'burpee', skater_jumps: 'jacks', jump_rope: 'jumps',
   shadow_run: 'guard', mt_stance: 'guard', mt_shadow: 'guard', mt_bag: 'guard', mt_pads: 'guard',
   mt_kicks: 'kicks', mt_teeps: 'teep', mt_knees: 'knees', mt_check: 'knees',
 };

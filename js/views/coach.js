@@ -1,7 +1,7 @@
 // Onglet « Coach caméra » : choisir un exercice, une série libre, un objectif ou un test de niveau.
 import { h, clear, modal, chips, toast } from '../ui.js';
 import { getState, update } from '../store.js';
-import { TRACKERS } from '../pose/trackers.js';
+import { TRACKERS, TEMPO_TRACKERS } from '../pose/trackers.js';
 import { roundConfig } from '../data/muaythai.js';
 import { todayISO, shortDate } from '../engine/dates.js';
 import { openCoach } from './coachOverlay.js';
@@ -9,14 +9,17 @@ import { EXERCISES } from '../data/exercises.js';
 import { award } from '../game/service.js';
 
 const GROUPS = [
-  { title: 'Musculation', ids: ['pushup', 'knee_pushup', 'squat', 'lunge', 'bridge', 'curl', 'press', 'plank'] },
-  { title: 'Cardio', ids: ['jacks', 'high_knees', 'jump_squat', 'burpee'] },
+  { title: 'Haut du corps', ids: ['pushup', 'knee_pushup', 'pike', 'dips', 'pullup', 'row', 'curl', 'press'] },
+  { title: 'Bas du corps', ids: ['squat', 'lunge', 'hinge', 'bridge', 'calf', 'wall_sit'] },
+  { title: 'Abdos & gainage', ids: ['plank', 'leg_raise', 'knee_raise', 'mountain'] },
+  { title: 'Cardio', ids: ['jacks', 'high_knees', 'jump_squat', 'burpee', 'jumps', 'swing'] },
   { title: 'Muay Thai', ids: ['guard', 'kicks', 'knees'] },
 ];
 
 const EMOJI = {
   pushup: '🫸', knee_pushup: '🧎', squat: '🏋️', lunge: '🚶', bridge: '🌉', curl: '💪', press: '🙌', plank: '🧱',
   jacks: '⭐', high_knees: '🏃', jump_squat: '🦘', burpee: '🔥', guard: '🥊', kicks: '🦵', knees: '🦿',
+  pike: '🔺', dips: '⬇️', pullup: '🧗', row: '🚣', hinge: '🏋️', swing: '🔔', calf: '🦶', wall_sit: '🪑', leg_raise: '🦵', knee_raise: '🧗', mountain: '⛰️', jumps: '🪢',
 };
 
 // Tests de niveau qui mettent à jour le profil (et donc le programme)
@@ -78,6 +81,7 @@ function configure(id) {
   let mode = t.mode === 'guard' ? 'rounds' : 'free';
   let target = t.mode === 'hold' ? 45 : 12;
   let rounds = 3;
+  let tempo = 'free';
   const opts = t.mode === 'guard'
     ? [{ id: 'rounds', label: 'Rounds avec combos annoncés' }, { id: 'free', label: 'Libre' }]
     : [{ id: 'free', label: 'Série libre' }, { id: 'target', label: t.mode === 'hold' ? 'Objectif de temps' : 'Objectif de reps' }];
@@ -96,6 +100,9 @@ function configure(id) {
     h('p', null, t.place),
     chips(opts, mode, { multi: false, onChange: (v) => { mode = v; renderExtra(); } }),
     extra,
+    TEMPO_TRACKERS.has(id) ? h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Tempo'),
+      chips([{ id: 'free', label: 'Libre (alerte si trop rapide)' }, { id: 'slow', label: '🐢 Lent : 2 s au retour' }], tempo, { multi: false, onChange: (v) => { tempo = v; } }),
+      h('span', { class: 'hint' }, 'Le tempo lent (2 s sur la phase de retour) fait travailler le muscle plus longtemps : idéal pour la prise de muscle.')) : null,
     h('button', {
       class: 'btn primary big',
       onclick: () => {
@@ -106,6 +113,7 @@ function configure(id) {
           title: t.label,
           target: mode === 'target' ? (t.mode === 'hold' ? { secs: target } : { reps: target }) : {},
           rounds: mode === 'rounds' ? { rounds, work: cfg.round, rest: cfg.rest, combos: true, mtLevel: prof.mtLevel ?? 1, comboEvery: cfg.comboEvery } : null,
+          tempo: TEMPO_TRACKERS.has(id) ? tempo : null,
           onDone: () => {},
         });
       },

@@ -236,3 +236,42 @@ test('pompes : bras pas tendus en haut = rep incomplète', () => {
   assert.ok(Object.keys(t.errors).some((m) => m.includes('Tends')));
 });
 
+
+// ---------------------------------------------------------------- Tempo
+function timedReps(fn, from, to, n, downFrames, upFrames, pauseFrames = 10) {
+  const frames = [];
+  for (let i = 0; i < 10; i += 1) frames.push(fn(from));
+  for (let r = 0; r < n; r += 1) {
+    for (let i = 0; i <= downFrames; i += 1) frames.push(fn(from + ((to - from) * i) / downFrames));
+    for (let i = 0; i <= upFrames; i += 1) frames.push(fn(to + ((from - to) * i) / upFrames));
+    for (let i = 0; i < pauseFrames; i += 1) frames.push(fn(from));
+  }
+  return frames;
+}
+
+test('tempo : durée de descente, de montée et repos entre les reps mesurés', () => {
+  const t = new PushupTracker();
+  run(t, timedReps(pushupFrame, 170, 80, 3, 60, 30, 30)); // ~2 s de descente, ~1 s de montée, ~1 s de pause (30 i/s)
+  const tempo = t.summary().tempo;
+  assert.equal(t.reps, 3);
+  assert.ok(tempo.ecc > 1.4 && tempo.ecc < 2.4, `descente=${tempo.ecc}`);
+  assert.ok(tempo.con > 0.5 && tempo.con < 1.5, `montée=${tempo.con}`);
+  assert.ok(tempo.rest > 0.5 && tempo.rest < 2, `repos=${tempo.rest}`);
+  assert.equal(tempo.fast, 0);
+});
+
+test('tempo : descente trop rapide signalée, et refusée en mode tempo lent', () => {
+  const free = new PushupTracker();
+  run(free, timedReps(pushupFrame, 170, 80, 3, 8, 8));
+  assert.equal(free.reps, 3);
+  assert.equal(free.summary().tempo.fast, 3);
+  const slow = new PushupTracker();
+  slow.setTempo('slow');
+  run(slow, timedReps(pushupFrame, 170, 80, 3, 8, 8));
+  assert.equal(slow.reps, 0);
+  assert.equal(slow.partial, 3);
+  const ok = new PushupTracker();
+  ok.setTempo('slow');
+  run(ok, timedReps(pushupFrame, 170, 80, 2, 70, 30));
+  assert.equal(ok.reps, 2);
+});

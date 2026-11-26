@@ -4,17 +4,18 @@ let deferredPrompt = null;
 const listeners = new Set();
 const notify = () => listeners.forEach((fn) => fn(installState()));
 
-window.addEventListener('beforeinstallprompt', (e) => {
-  // Chrome / Edge / Android : on garde l'événement pour proposer notre propre bouton « Installer »
-  e.preventDefault();
-  deferredPrompt = e;
-  notify();
-});
-
-window.addEventListener('appinstalled', () => {
-  deferredPrompt = null;
-  notify();
-});
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    // Chrome / Edge / Android : on garde l'événement pour proposer notre propre bouton « Installer »
+    e.preventDefault();
+    deferredPrompt = e;
+    notify();
+  });
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    notify();
+  });
+}
 
 export function onInstallChange(fn) {
   listeners.add(fn);

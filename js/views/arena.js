@@ -1,7 +1,9 @@
 // Arène : combats de boss + coach caméra (entraînement libre, tests de niveau).
 import { h, clear, modal } from '../ui.js';
 import { getState } from '../store.js';
-import { BOSSES, bossUnlocked, phaseTarget } from '../game/bosses.js';
+import { BOSSES, bossUnlocked, phaseTarget, weeklyEvent } from '../game/bosses.js';
+import { todayISO, daysBetween } from '../engine/dates.js';
+import { challengesSection } from './challenge.js';
 import { monsterSvg } from '../game/monster.js';
 import { playerSummary } from '../game/service.js';
 import { formatDuration } from '../engine/dates.js';
@@ -16,6 +18,8 @@ export function renderArena(root) {
   root.append(h('section', { class: 'page-head' },
     h('h1', null, '⚔️ Arène'),
     h('p', { class: 'muted' }, 'Affronte des boss avec ton corps. Chaque rep propre validée par la caméra lui inflige des dégâts : plus ta technique est parfaite, plus tu frappes fort.')));
+
+  root.append(weeklyCard(() => renderArena(root)));
 
   root.append(h('div', { class: 'boss-grid' }, BOSSES.map((b) => {
     const unlocked = bossUnlocked(b, ps.level);
@@ -40,6 +44,8 @@ export function renderArena(root) {
       h('li', null, 'Ta Force augmente tes dégâts, ton Endurance tes PV, ta Technique tes critiques.'),
       h('li', null, 'Pas de caméra ? Mode manuel possible, mais dégâts réduits.'))));
 
+  root.append(challengesSection());
+
   const coachBox = h('div');
   root.append(coachBox);
   renderCoach(coachBox);
@@ -63,4 +69,27 @@ function bossModal(b, root) {
     h('button', { class: 'btn primary big', onclick: () => { m.close(); openBossFight(b.id, { onDone: () => renderArena(root) }); } }, '📷 Combattre avec la caméra'),
     h('button', { class: 'btn ghost', onclick: () => { m.close(); openBossFight(b.id, { manual: true, onDone: () => renderArena(root) }); } }, 'Combattre sans caméra (dégâts réduits)')),
   { title: `${b.name} · Rang ${b.rank}` });
+}
+
+/** Carte « Boss de la semaine » (réutilisée sur l'accueil). */
+export function weeklyCard(rerender, { compact = false } = {}) {
+  const ps = playerSummary();
+  const today = todayISO();
+  const ev = weeklyEvent(today, ps.level, { muaythai: (getState().profile?.goals || []).includes('muaythai') });
+  const done = ps.game.events?.[ev.key];
+  const left = daysBetween(today, ev.endsOn);
+  if (compact && done?.won) return null;
+  const card = h('section', { class: `card weekly${done?.won ? ' won' : ''}` },
+    h('div', { class: 'weekly-art', html: monsterSvg(ev.boss, { size: compact ? 72 : 96, className: 'idle' }) }),
+    h('div', { class: 'weekly-main' },
+      h('div', { class: 'event-tag' }, `📅 Boss de la semaine · encore ${left} j`),
+      h('b', null, ev.boss.name),
+      h('div', { class: 'small' }, `${ev.modifier.emoji} ${ev.modifier.name} · rang ${ev.rank} · XP ×${ev.xpMult}`),
+      compact ? null : h('p', { class: 'small muted' }, ev.modifier.desc),
+      done?.won
+        ? h('div', { class: 'small good-text' }, `✅ Vaincu cette semaine (note ${done.grade}) · reviens lundi pour le suivant`)
+        : h('div', { class: 'row gap wrap' },
+          h('button', { class: 'btn primary small', onclick: () => openBossFight(ev.boss.id, { event: ev, onDone: rerender }) }, '📷 Combattre'),
+          compact ? null : h('button', { class: 'btn ghost small', onclick: () => openBossFight(ev.boss.id, { event: ev, manual: true, onDone: rerender }) }, 'Sans caméra'))));
+  return card;
 }

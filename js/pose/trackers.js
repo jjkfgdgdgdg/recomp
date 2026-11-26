@@ -1,7 +1,7 @@
 // Analyse des mouvements : compteur de répétitions + corrections, à partir des points du squelette.
 // Aucune IA générative : des angles, des seuils et des machines à états.
 import {
-  SIDE, LM, angle, dist, mid, fromVertical, fromHorizontal, avgVis, bestSide, Ema, Cycle,
+  SIDE, LM, angle, dist, mid, fromVertical, fromHorizontal, avgVis, bestSide, Ema, Cycle, vis,
 } from './geometry.js';
 
 const GOOD = 'good'; const WARN = 'warn'; const BAD = 'bad';
@@ -19,6 +19,34 @@ class BaseTracker {
     this.lastT = null;
     this.ready = false;
     this.repScores = [];
+    // Tempo : durée de chaque rep (phase de retour = « excentrique ») et repos entre les reps
+    this.tempo = { check: false, eccFirst: true, eccLabel: 'la descente', minEcc: null };
+    this.repTimes = [];
+    this.lastRepEnd = null;
+    this.curEv = null;
+    this.fastReps = 0;
+  }
+
+  /** mode 'slow' : la phase de retour doit durer au moins 1,5 s, sinon la rep ne compte pas. */
+  setTempo(mode) {
+    this.tempo.minEcc = mode === 'slow' && this.tempo.check ? 1.5 : null;
+  }
+
+  takeTiming(valid) {
+    const ev = this.curEv;
+    this.curEv = null;
+    if (!ev || ev.start === null || ev.start === undefined || ev.end === null || ev.end === undefined) return null;
+    const r1 = (v) => Math.round(v * 10) / 10;
+    const ecc = this.tempo.eccFirst ? ev.there : ev.back;
+    const con = this.tempo.eccFirst ? ev.back : ev.there;
+    const rest = this.lastRepEnd !== null ? Math.max(0, (ev.start - this.lastRepEnd) / 1000) : null;
+    this.lastRepEnd = ev.end;
+    const r = {
+      ecc: r1(ecc), con: r1(con), total: r1((ev.end - ev.start) / 1000), rest: rest === null ? null : r1(rest), valid, start: ev.start, end: ev.end,
+    };
+    this.repTimes.push(r);
+    if (this.repTimes.length > 300) this.repTimes.shift();
+    return r;
   }
 
   begin(t) {
@@ -33,16 +61,34 @@ class BaseTracker {
   }
 
   valid(msg = null, score = 100) {
+    const tm = this.takeTiming(true);
+    if (tm && this.tempo.check) {
+      if (this.tempo.minEcc && tm.ecc < this.tempo.minEcc) {
+        tm.valid = false;
+        const m = `Trop rapide : ${this.tempo.eccLabel} en 2 secondes`;
+        this.partial += 1;
+        this.repScores.push(50);
+        this.addError(m);
+        this.events.push({ type: 'rep', valid: false, count: this.reps, msg: m, tempo: tm });
+        return;
+      }
+      if (tm.ecc < 0.4) {
+        this.fastReps += 1;
+        score = Math.min(score, 85);
+        this.events.push({ type: 'cue', msg: `Contrôle ${this.tempo.eccLabel}`, tempo: true });
+      }
+    }
     this.reps += 1;
     this.repScores.push(score);
-    this.events.push({ type: 'rep', valid: true, count: this.reps, msg });
+    this.events.push({ type: 'rep', valid: true, count: this.reps, msg, score, tempo: tm });
   }
 
   invalid(msg) {
+    const tm = this.takeTiming(false);
     this.partial += 1;
     this.repScores.push(40);
     this.addError(msg);
-    this.events.push({ type: 'rep', valid: false, count: this.reps, msg });
+    this.events.push({ type: 'rep', valid: false, count: this.reps, msg, tempo: tm });
   }
 
   notReady(msg, joints = {}) {
@@ -74,6 +120,23 @@ class BaseTracker {
     const topErrors = Object.entries(this.errors).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([msg, n]) => ({ msg, n }));
     return {
       reps: this.reps, partial: this.partial, holdSec: Math.round(this.holdSec), activeSec: Math.round(this.activeSec), score, topErrors,
+      tempo: this.tempoSummary(),
+    };
+  }
+
+  tempoSummary() {
+    const t = this.repTimes;
+    if (!t.length) return null;
+    const avg = (arr) => (arr.length ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10 : null);
+    const span = (t[t.length - 1].end - t[0].start) / 60000;
+    return {
+      ecc: avg(t.map((x) => x.ecc)),
+      con: avg(t.map((x) => x.con)),
+      rest: avg(t.filter((x) => x.rest !== null).map((x) => x.rest)),
+      cadence: span > 0 ? Math.round(t.length / span) : null,
+      totals: t.slice(-40).map((x) => ({ total: x.total, ecc: x.ecc, valid: x.valid })),
+      fast: this.fastReps,
+      check: this.tempo.check,
     };
   }
 }
@@ -93,6 +156,7 @@ export class PushupTracker extends BaseTracker {
     this.line = new Ema(0.45);
     this.cycle = new Cycle({ rest: 150, target: 100, partial: 132, lockout: true });
     this.badFrames = 0;
+    this.tempo.check = true;
   }
 
   update(pts, t) {
@@ -122,7 +186,8 @@ export class PushupTracker extends BaseTracker {
       this.badFrames += 1;
       if (this.badFrames >= 4) this.repFlags.add(issue);
     }
-    const ev = this.cycle.update(e);
+    const ev = this.cycle.update(e, this.lastT);
+    this.curEv = ev;
     if (ev) {
       if (ev.type === 'full') {
         if (this.repFlags.size) this.invalid([...this.repFlags][0] === 'sag' ? 'Hanches trop basses' : 'Fesses trop hautes');
@@ -163,6 +228,7 @@ export class SquatTracker extends BaseTracker {
     this.thigh = new Ema(0.1);
     this.cycle = new Cycle({ rest: 155, target: jump ? 115 : 100, partial: 135 });
     this.flagFrames = {};
+    this.tempo.check = !jump;
   }
 
   flag(key, cond) {
@@ -206,7 +272,8 @@ export class SquatTracker extends BaseTracker {
       this.flag('valgus', valgus);
     }
 
-    const ev = this.cycle.update(m);
+    const ev = this.cycle.update(m, this.lastT);
+    this.curEv = ev;
     if (ev) {
       if (ev.type === 'full') {
         if (this.repFlags.has('valgus')) this.invalid('Genoux qui rentrent : pousse-les vers l’extérieur');
@@ -244,6 +311,7 @@ export class LungeTracker extends BaseTracker {
     super('reps');
     this.ema = new Ema(0.55);
     this.cycle = new Cycle({ rest: 155, target: 105, partial: 135 });
+    this.tempo.check = true;
   }
 
   update(pts, t) {
@@ -258,7 +326,8 @@ export class LungeTracker extends BaseTracker {
     const hp = mid(pts[LM.lHip], pts[LM.rHip]);
     const lean = fromVertical(hp, sh);
     if (lean > 30 && this.cycle.state === 'work') this.repFlags.add('lean');
-    const ev = this.cycle.update(m);
+    const ev = this.cycle.update(m, this.lastT);
+    this.curEv = ev;
     if (ev) {
       if (ev.type === 'full') {
         if (this.repFlags.has('lean')) this.invalid('Garde le buste bien droit');
@@ -374,6 +443,7 @@ class BilateralTracker extends BaseTracker {
   constructor(cfg) {
     super('reps');
     this.cfg = cfg;
+    if (cfg.tempo) Object.assign(this.tempo, { check: true, ...cfg.tempo });
     this.sides = {
       L: { ema: new Ema(0.55), cycle: new Cycle(cfg.cycle), flags: new Set(), lastRep: -1e9 },
       R: { ema: new Ema(0.55), cycle: new Cycle(cfg.cycle), flags: new Set(), lastRep: -1e9 },
@@ -388,16 +458,18 @@ class BilateralTracker extends BaseTracker {
     let anyVisible = false;
     let metric = null;
     let progress = 0;
+    let gated = false;
     for (const sd of ['L', 'R']) {
       const s = SIDE[sd];
       const st = this.sides[sd];
       if (avgVis(pts, this.cfg.need.map((k) => s[k])) < 0.5) continue;
+      if (this.cfg.gate && !this.cfg.gate(pts, s)) { st.cycle.state = 'rest'; gated = true; continue; }
       anyVisible = true;
       const raw = this.cfg.metric(pts, s, sd);
       const v = st.ema.next(raw);
       const flag = this.cfg.check ? this.cfg.check(pts, s, sd, v) : null;
       if (flag && st.cycle.state === 'work') st.flags.add(flag);
-      const ev = st.cycle.update(v);
+      const ev = st.cycle.update(v, this.lastT);
       if (ev) this.handle(ev, st, t, sd);
       const lvl = flag ? BAD : st.cycle.state === 'work' && !st.cycle.reachedTarget() ? WARN : GOOD;
       color(joints, this.cfg.color.map((k) => s[k]), lvl);
@@ -408,13 +480,14 @@ class BilateralTracker extends BaseTracker {
         metric = this.cfg.label ? { label: this.cfg.label, value: Math.round(this.cfg.display ? this.cfg.display(v) : v), unit: this.cfg.unit || '°' } : null;
       }
     }
-    if (!anyVisible) return this.notReady(this.cfg.placement);
+    if (!anyVisible) return this.notReady(gated && this.cfg.gateMsg ? this.cfg.gateMsg : this.cfg.placement);
     this.ready = true;
     if (!feedback && this.cfg.live) feedback = this.cfg.live(pts, this);
     return this.out({ joints, feedback, metric, progress });
   }
 
   handle(ev, st, t, sd) {
+    this.curEv = ev;
     const flags = [...st.flags];
     st.flags.clear();
     if (ev.type !== 'full') {
@@ -442,6 +515,7 @@ export function curlTracker() {
     color: ['sh', 'el', 'wr'],
     cycle: { rest: 145, target: 60, partial: 95 },
     merge: true,
+    tempo: { eccFirst: false, eccLabel: 'la descente des bras' },
     label: 'Coude',
     metric: (pts, s) => angle(pts[s.sh], pts[s.el], pts[s.wr]),
     check: (pts, s) => (angle(pts[s.el], pts[s.sh], pts[s.hip]) > 35 && avgVis(pts, [s.hip]) > 0.5 ? 'Coudes collés au corps' : null),
@@ -456,6 +530,7 @@ export function pressTracker() {
     color: ['sh', 'el', 'wr'],
     cycle: { rest: 105, target: 155, partial: 135 },
     merge: true,
+    tempo: { eccFirst: false, eccLabel: 'la descente des bras' },
     label: 'Coude',
     metric: (pts, s) => {
       const e = angle(pts[s.sh], pts[s.el], pts[s.wr]);
@@ -510,6 +585,7 @@ export function bridgeTracker() {
     color: ['sh', 'hip', 'kn'],
     cycle: { rest: 145, target: 166, partial: 156 },
     merge: true,
+    tempo: { eccFirst: false, eccLabel: 'la descente des hanches' },
     label: 'Hanches',
     metric: (pts, s) => angle(pts[s.sh], pts[s.hip], pts[s.kn]),
     partialMsg: 'Monte les hanches plus haut, serre les fessiers',
@@ -560,7 +636,8 @@ export class BurpeeTracker extends BaseTracker {
     if (avgVis(pts, [s.sh, s.hip]) < 0.5) return this.notReady('Recule et mets-toi de profil, tout le corps visible');
     this.ready = true;
     const m = this.ema.next(fromVertical(hp, sh));
-    const ev = this.cycle.update(m);
+    const ev = this.cycle.update(m, this.lastT);
+    this.curEv = ev;
     if (ev) {
       if (ev.type === 'full') this.valid();
       else this.invalid('Va jusqu’en planche, poitrine vers le sol');
@@ -654,6 +731,288 @@ export class GuardTracker extends BaseTracker {
 }
 
 // ---------------------------------------------------------------------------
+// Tractions (face ou dos à la caméra) : coudes + menton au-dessus de la barre
+// ---------------------------------------------------------------------------
+export class PullupTracker extends BaseTracker {
+  constructor({ hangingKnees = false } = {}) {
+    super('reps');
+    this.ema = new Ema(0.55);
+    this.cycle = new Cycle({ rest: 145, target: 80, partial: 115 });
+    Object.assign(this.tempo, { check: true, eccFirst: false, eccLabel: 'la descente' });
+    this.minNose = null;
+  }
+
+  update(pts, t) {
+    this.begin(t);
+    const ids = [LM.nose, LM.lShoulder, LM.rShoulder, LM.lElbow, LM.rElbow, LM.lWrist, LM.rWrist];
+    if (avgVis(pts, ids) < 0.5) return this.notReady('Face (ou dos) à la caméra : barre, bras et tête visibles');
+    const wrY = (pts[LM.lWrist].y + pts[LM.rWrist].y) / 2;
+    const shY = (pts[LM.lShoulder].y + pts[LM.rShoulder].y) / 2;
+    if (wrY > shY - 0.02) {
+      this.cycle.state = 'rest';
+      return this.notReady('Accroche-toi à la barre, bras au-dessus de la tête');
+    }
+    this.ready = true;
+    const e = this.ema.next((angle(pts[11], pts[13], pts[15]) + angle(pts[12], pts[14], pts[16])) / 2);
+    const noseRel = pts[LM.nose].y - wrY; // négatif = menton au-dessus de la barre
+    if (this.cycle.state === 'work') this.minNose = this.minNose === null ? noseRel : Math.min(this.minNose, noseRel);
+    const ev = this.cycle.update(e, this.lastT);
+    this.curEv = ev;
+    if (ev) {
+      if (ev.type === 'full') {
+        if (this.minNose !== null && this.minNose > 0.03) this.invalid('Monte le menton au-dessus de la barre');
+        else this.valid();
+      } else if (ev.type === 'partial') this.invalid('Monte plus haut : menton au-dessus de la barre');
+      this.minNose = null;
+    }
+    const joints = {};
+    const up = this.cycle.reachedTarget();
+    color(joints, [11, 13, 15, 12, 14, 16], this.cycle.state === 'rest' || up ? GOOD : WARN);
+    let feedback = null;
+    if (this.cycle.state === 'work' && !up) feedback = { text: 'Tire les coudes vers les hanches', level: WARN };
+    else if (this.cycle.state === 'work') feedback = { text: 'Redescends en contrôle, bras tendus en bas', level: GOOD };
+    return this.out({ joints, feedback, metric: { label: 'Coudes', value: Math.round(e), unit: '°' }, progress: this.cycle.progress(e) });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Exercices de profil basés sur un angle (dips, rowing, pompes piquées, charnière, relevés de jambes)
+// ---------------------------------------------------------------------------
+class SideAngleTracker extends BaseTracker {
+  /**
+   * cfg = { keys, metric(pts, s), cycle, gate(pts, s) -> bool, gateMsg, placement, label, unit,
+   *         tempo, flag(pts, s, v, tracker) -> message|null, partialMsg, liveWork, liveDone }
+   */
+  constructor(cfg) {
+    super('reps');
+    this.cfg = cfg;
+    this.ema = new Ema(0.55);
+    this.cycle = new Cycle(cfg.cycle);
+    if (cfg.tempo) Object.assign(this.tempo, { check: true, ...cfg.tempo });
+    this.flagFrames = {};
+    this.startRef = null;
+  }
+
+  update(pts, t) {
+    this.begin(t);
+    const s = SIDE[bestSide(pts, this.cfg.keys)];
+    if (avgVis(pts, this.cfg.keys.map((k) => s[k])) < 0.55) return this.notReady(this.cfg.placement);
+    if (this.cfg.gate && !this.cfg.gate(pts, s)) {
+      this.cycle.state = 'rest';
+      return this.notReady(this.cfg.gateMsg || this.cfg.placement);
+    }
+    this.ready = true;
+    const v = this.ema.next(this.cfg.metric(pts, s));
+    if (this.cycle.state === 'rest') this.startRef = this.cfg.ref ? this.cfg.ref(pts, s) : null;
+    const flag = this.cfg.flag ? this.cfg.flag(pts, s, v, this) : null;
+    if (flag && this.cycle.state === 'work') {
+      this.flagFrames[flag] = (this.flagFrames[flag] || 0) + 1;
+      if (this.flagFrames[flag] >= 4) this.repFlags.add(flag);
+    }
+    const ev = this.cycle.update(v, this.lastT);
+    this.curEv = ev;
+    if (ev) {
+      if (ev.type === 'full') {
+        if (this.repFlags.size) this.invalid([...this.repFlags][0]);
+        else this.valid();
+      } else this.invalid(this.cfg.partialMsg);
+      this.repFlags.clear();
+      this.flagFrames = {};
+    }
+    const joints = {};
+    const ok = this.cycle.state === 'rest' || this.cycle.reachedTarget();
+    color(joints, this.cfg.colorKeys.map((k) => s[k]), flag ? BAD : ok ? GOOD : WARN);
+    let feedback = null;
+    if (flag) feedback = { text: flag, level: BAD };
+    else if (this.cycle.state === 'work' && !this.cycle.reachedTarget()) feedback = this.cfg.liveWork ? { text: this.cfg.liveWork, level: WARN } : null;
+    else if (this.cycle.state === 'work') feedback = this.cfg.liveDone ? { text: this.cfg.liveDone, level: GOOD } : null;
+    return this.out({
+      joints, feedback,
+      metric: { label: this.cfg.label, value: Math.round(v), unit: this.cfg.unit ?? '°' },
+      progress: this.cycle.progress(v),
+    });
+  }
+}
+
+export function dipsTracker() {
+  return new SideAngleTracker({
+    keys: ['sh', 'el', 'wr', 'hip'], colorKeys: ['sh', 'el', 'wr'],
+    metric: (pts, s) => angle(pts[s.sh], pts[s.el], pts[s.wr]),
+    cycle: { rest: 150, target: 100, partial: 128 },
+    gate: (pts, s) => pts[s.wr].y > pts[s.sh].y && fromVertical(pts[s.hip], pts[s.sh]) < 60,
+    gateMsg: 'Mains sur les barres (ou la chaise), buste vertical',
+    placement: 'Place-toi de profil : bras et buste visibles',
+    label: 'Coudes', tempo: { eccFirst: true, eccLabel: 'la descente' },
+    partialMsg: 'Descends plus : coudes à 90°', liveWork: 'Descends… coudes à 90°', liveDone: 'Pousse, bras tendus',
+  });
+}
+
+export function rowTracker() {
+  return new SideAngleTracker({
+    keys: ['sh', 'el', 'wr', 'hip'], colorKeys: ['sh', 'el', 'wr'],
+    metric: (pts, s) => angle(pts[s.sh], pts[s.el], pts[s.wr]),
+    ref: (pts, s) => fromVertical(pts[s.hip], pts[s.sh]),
+    flag: (pts, s, v, tr) => (tr.startRef !== null && Math.abs(fromVertical(pts[s.hip], pts[s.sh]) - tr.startRef) > 18 ? 'Ne te balance pas : buste immobile' : null),
+    cycle: { rest: 145, target: 85, partial: 115 },
+    placement: 'Place-toi de profil : bras et buste visibles',
+    label: 'Coude', tempo: { eccFirst: false, eccLabel: 'le retour' },
+    partialMsg: 'Tire plus loin : coude vers la hanche', liveWork: 'Tire le coude vers la hanche', liveDone: 'Serre les omoplates, puis relâche lentement',
+  });
+}
+
+export function pikeTracker() {
+  return new SideAngleTracker({
+    keys: ['sh', 'el', 'wr', 'hip'], colorKeys: ['sh', 'el', 'wr', 'hip'],
+    metric: (pts, s) => angle(pts[s.sh], pts[s.el], pts[s.wr]),
+    cycle: { rest: 150, target: 100, partial: 128 },
+    gate: (pts, s) => pts[s.wr].y > pts[s.sh].y && pts[s.hip].y < pts[s.sh].y - 0.04,
+    gateMsg: 'Mets-toi en V inversé : mains au sol, fesses en l\u2019air',
+    placement: 'Téléphone au sol, de profil, tout le corps visible',
+    label: 'Coudes', tempo: { eccFirst: true, eccLabel: 'la descente' },
+    partialMsg: 'Descends plus : tête vers le sol', liveWork: 'Tête vers le sol devant les mains', liveDone: 'Pousse !',
+  });
+}
+
+export function hingeTracker({ fast = false } = {}) {
+  return new SideAngleTracker({
+    keys: ['sh', 'hip', 'kn', 'an'], colorKeys: ['sh', 'hip', 'kn'],
+    metric: (pts, s) => fromVertical(pts[s.hip], pts[s.sh]),
+    flag: (pts, s) => (angle(pts[s.hip], pts[s.kn], pts[s.an]) < 115 ? 'Genoux presque tendus : pousse les fesses en arrière' : null),
+    cycle: { rest: 25, target: 55, partial: 42 },
+    placement: 'De profil, à 2-3 m : tout le corps visible',
+    label: 'Buste', tempo: fast ? null : { eccFirst: true, eccLabel: 'la descente' },
+    partialMsg: 'Penche-toi plus, dos plat', liveWork: 'Fesses en arrière, dos plat', liveDone: 'Remonte en serrant les fessiers',
+  });
+}
+
+export function legRaiseTracker({ hanging = false } = {}) {
+  return new SideAngleTracker({
+    keys: ['sh', 'hip', 'kn', 'an'], colorKeys: ['hip', 'kn', 'an'],
+    metric: (pts, s) => angle(pts[s.sh], pts[s.hip], pts[s.kn]),
+    gate: hanging
+      ? (pts, s) => pts[s.wr].y < pts[s.sh].y
+      : (pts, s) => fromHorizontal(pts[s.sh], pts[s.hip]) < 35,
+    gateMsg: hanging ? 'Suspends-toi à la barre' : 'Allonge-toi sur le dos, de profil',
+    flag: hanging ? null : (pts, s) => (angle(pts[s.hip], pts[s.kn], pts[s.an]) < 135 ? 'Garde les jambes tendues' : null),
+    cycle: { rest: 160, target: 110, partial: 135 },
+    placement: hanging ? 'De profil, barre et jambes visibles' : 'Allongé de profil, téléphone au sol à 2 m',
+    label: 'Hanches', tempo: { eccFirst: false, eccLabel: 'la descente des jambes' },
+    partialMsg: 'Monte les jambes plus haut', liveWork: 'Monte les jambes', liveDone: 'Redescends lentement sans toucher le sol',
+  });
+}
+
+export function mountainTracker() {
+  return new BilateralTracker({
+    need: ['sh', 'hip', 'kn'],
+    color: ['hip', 'kn', 'an'],
+    cycle: { rest: 150, target: 115, partial: 132 },
+    merge: false,
+    label: 'Genou',
+    metric: (pts, s) => angle(pts[s.sh], pts[s.hip], pts[s.kn]),
+    gate: (pts, s) => fromHorizontal(pts[s.sh], pts[s.hip]) < 45 && pts[s.wr].y > pts[s.sh].y,
+    gateMsg: 'Mets-toi en position de pompe, de profil',
+    partialMsg: 'Ramène le genou plus près de la poitrine',
+    placement: 'Téléphone au sol, de profil, en position de pompe',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Chaise contre le mur (gainage des cuisses)
+// ---------------------------------------------------------------------------
+export class WallSitTracker extends BaseTracker {
+  constructor() {
+    super('hold');
+    this.ema = new Ema(0.4);
+    this.graceSec = 0;
+  }
+
+  update(pts, t) {
+    const dt = this.begin(t);
+    const s = SIDE[bestSide(pts, ['sh', 'hip', 'kn', 'an'])];
+    if (avgVis(pts, [s.sh, s.hip, s.kn, s.an]) < 0.55) return this.notReady('De profil, à 2 m, tout le corps visible');
+    this.ready = true;
+    this.activeSec += dt;
+    const k = this.ema.next(angle(pts[s.hip], pts[s.kn], pts[s.an]));
+    const lean = fromVertical(pts[s.hip], pts[s.sh]);
+    let feedback;
+    let good = false;
+    if (k > 118) feedback = { text: 'Descends : cuisses parallèles au sol', level: WARN };
+    else if (k < 68) feedback = { text: 'Remonte un peu : genoux à 90°', level: WARN };
+    else if (lean > 25) feedback = { text: 'Dos collé au mur', level: WARN };
+    else { good = true; feedback = { text: 'Parfait, tiens bon !', level: GOOD }; }
+    if (good) { this.holdSec += dt; this.graceSec = 0; } else { this.graceSec += dt; if (this.graceSec < 0.6) this.holdSec += dt; }
+    const joints = {};
+    color(joints, [s.hip, s.kn, s.an, s.sh], good ? GOOD : WARN);
+    return this.out({ joints, feedback, metric: { label: 'Genoux', value: Math.round(k), unit: '°' }, progress: good ? 1 : 0 });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mollets : le talon monte au-dessus de la pointe du pied
+// ---------------------------------------------------------------------------
+export class CalfTracker extends BaseTracker {
+  constructor() {
+    super('reps');
+    this.ema = new Ema(0.5);
+    this.cycle = new Cycle({ rest: 0.1, target: 0.35, partial: 0.22 });
+    Object.assign(this.tempo, { check: true, eccFirst: false, eccLabel: 'la descente des talons' });
+  }
+
+  update(pts, t) {
+    this.begin(t);
+    const s = SIDE[bestSide(pts, ['an', 'heel', 'foot'])];
+    if (avgVis(pts, [s.an, s.heel, s.foot]) < 0.4) return this.notReady('De profil, téléphone au sol : pieds bien visibles');
+    this.ready = true;
+    const foot = dist(pts[s.heel], pts[s.foot]) || 0.05;
+    const v = this.ema.next((pts[s.foot].y - pts[s.heel].y) / foot);
+    const ev = this.cycle.update(v, this.lastT);
+    this.curEv = ev;
+    if (ev) {
+      if (ev.type === 'full') this.valid();
+      else this.invalid('Monte plus haut sur la pointe des pieds');
+    }
+    const joints = {};
+    color(joints, [s.an, s.heel, s.foot], this.cycle.state === 'rest' || this.cycle.reachedTarget() ? GOOD : WARN);
+    const feedback = this.cycle.state === 'work' && this.cycle.reachedTarget() ? { text: 'Tiens 1 s en haut, puis descends lentement', level: GOOD } : null;
+    return this.out({ joints, feedback, metric: { label: 'Talon', value: Math.round(v * 100), unit: '%' }, progress: this.cycle.progress(v) });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sauts (corde à sauter, sauts sur place) : oscillation verticale des hanches
+// ---------------------------------------------------------------------------
+export class JumpTracker extends BaseTracker {
+  constructor() {
+    super('reps');
+    this.base = null;
+    this.ema = new Ema(0.6);
+    this.cycle = new Cycle({ rest: 0.006, target: 0.02, partial: 0.014 });
+  }
+
+  update(pts, t) {
+    this.begin(t);
+    const hp = mid(pts[LM.lHip], pts[LM.rHip]);
+    const sh = mid(pts[LM.lShoulder], pts[LM.rShoulder]);
+    const an = mid(pts[LM.lAnkle], pts[LM.rAnkle]);
+    if (Math.max(vis(pts[LM.lHip]), vis(pts[LM.rHip])) < 0.5 || Math.max(vis(pts[LM.lAnkle]), vis(pts[LM.rAnkle])) < 0.5) {
+      return this.notReady('Recule : je dois voir tout ton corps, pieds compris');
+    }
+    this.ready = true;
+    const body = dist(sh, an) || 0.5;
+    // Référence = position la plus basse des hanches (au sol), qui suit lentement les changements de posture
+    this.base = this.base === null ? hp.y : Math.max(hp.y, this.base - 0.0008);
+    const v = this.ema.next((this.base - hp.y) / body);
+    const ev = this.cycle.update(v, this.lastT);
+    this.curEv = ev;
+    if (ev && ev.type === 'full') this.valid();
+    else if (ev) this.takeTiming(false);
+    const joints = {};
+    color(joints, [23, 24, 25, 26, 27, 28], GOOD);
+    return this.out({ joints, feedback: null, metric: { label: 'Saut', value: Math.round(v * 1000) / 10, unit: '%' }, progress: this.cycle.progress(v) });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Registre
 // ---------------------------------------------------------------------------
 export const TRACKERS = {
@@ -672,4 +1031,19 @@ export const TRACKERS = {
   kicks: { label: 'Coups de pied', mode: 'reps', view: 'Face ou 3/4', place: 'Recule à 3 m, tout le corps visible.', make: () => kickTracker() },
   knees: { label: 'Coups de genou', mode: 'reps', view: 'Face ou 3/4', place: 'À 2-3 m, de face ou de 3/4.', make: () => kneeStrikeTracker() },
   guard: { label: 'Shadow boxing (garde)', mode: 'guard', view: 'Face', place: 'De face, à 2-3 m, du haut du corps jusqu’aux pieds si possible.', make: () => new GuardTracker() },
+  pullup: { label: 'Tractions', mode: 'reps', view: 'Face ou dos', place: 'Téléphone à 2-3 m, face à la barre (ou dans ton dos) : barre, bras et tête visibles.', make: () => new PullupTracker() },
+  dips: { label: 'Dips', mode: 'reps', view: 'Profil', place: 'De profil, à 2 m : bras et buste visibles.', make: () => dipsTracker() },
+  row: { label: 'Rowing', mode: 'reps', view: 'Profil', place: 'De profil, à 2 m : bras et buste visibles.', make: () => rowTracker() },
+  hinge: { label: 'Soulevé de terre roumain', mode: 'reps', view: 'Profil', place: 'De profil, à 2-3 m : tout le corps visible.', make: () => hingeTracker() },
+  swing: { label: 'Kettlebell swing', mode: 'reps', view: 'Profil', place: 'De profil, à 3 m : tout le corps visible.', make: () => hingeTracker({ fast: true }) },
+  pike: { label: 'Pompes piquées', mode: 'reps', view: 'Profil', place: 'Téléphone au sol, de profil, à 2 m.', make: () => pikeTracker() },
+  mountain: { label: 'Mountain climbers', mode: 'reps', view: 'Profil', place: 'Téléphone au sol, de profil, à 2 m, en position de pompe.', make: () => mountainTracker() },
+  leg_raise: { label: 'Relevés de jambes', mode: 'reps', view: 'Profil', place: 'Allongé sur le dos, de profil, téléphone au sol à 2 m.', make: () => legRaiseTracker() },
+  knee_raise: { label: 'Relevés de genoux suspendu', mode: 'reps', view: 'Profil', place: 'De profil, à 2-3 m : barre et jambes visibles.', make: () => legRaiseTracker({ hanging: true }) },
+  wall_sit: { label: 'Chaise contre le mur', mode: 'hold', view: 'Profil', place: 'De profil, à 2 m, dos contre le mur.', make: () => new WallSitTracker() },
+  calf: { label: 'Mollets', mode: 'reps', view: 'Profil', place: 'Téléphone au sol, de profil, à 1,5 m : pieds bien visibles.', make: () => new CalfTracker() },
+  jumps: { label: 'Corde à sauter / sauts', mode: 'reps', view: 'Face', place: 'De face, à 3 m : tout le corps visible, pieds compris.', make: () => new JumpTracker() },
 };
+
+// Exercices où le tempo (vitesse de la phase de retour) est analysé
+export const TEMPO_TRACKERS = new Set(['pushup', 'knee_pushup', 'squat', 'lunge', 'curl', 'press', 'bridge', 'pullup', 'dips', 'row', 'hinge', 'pike', 'leg_raise', 'knee_raise', 'calf']);

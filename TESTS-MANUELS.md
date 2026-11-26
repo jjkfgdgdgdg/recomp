@@ -32,12 +32,25 @@ Pour chaque exercice : fais 10 reps propres, puis 3 reps volontairement mauvaise
 | Coups de pied | de face, 3 m | | kick trop bas | |
 | Coups de genou | de face | | | |
 | Shadow (garde) | de face | garde % cohérente | mains basses → alerte | |
+| Tractions | face ou dos, 2-3 m | | menton sous la barre | |
+| Dips | de profil | | demi-dips | |
+| Rowing haltère | de profil | | buste qui se balance | |
+| Soulevé de terre roumain | de profil | | genoux trop pliés | |
+| Pompes piquées | au sol, de profil | | | |
+| Mountain climbers | au sol, de profil | (chaque jambe compte) | | |
+| Relevés de jambes | allongé, de profil | | jambes pliées | |
+| Chaise contre le mur | de profil | chrono qui avance | genoux pas à 90° | |
+| Mollets | au sol, de profil, pieds visibles | | | |
+| Corde à sauter | de face, 3 m | nombre de sauts | | |
 
 - [ ] Fluidité : nombre d'images/s affiché (≥ 15 sur téléphone récent, sinon essayer le modèle « Rapide »)
 - [ ] Caméra arrière (bouton ⇄) et caméra avant
 - [ ] Lumière faible / contre-jour : le message « Je ne te vois pas » apparaît
 - [ ] La voix compte les reps et corrige (Android, iPhone, PC)
 - [ ] Coach Hardcore : voix plus grave sur ton appareil ? (dépend des voix installées)
+
+- [ ] Tempo : une descente rapide déclenche « Contrôle la descente » ; en mode tempo lent, les reps rapides ne comptent pas
+- [ ] Le résumé affiche les durées (retour, effort, pause) et le graphique des reps
 
 ## 3. Combats de boss
 - [ ] Slime (rang E) : durée du combat raisonnable (vise 3 à 6 min)
@@ -56,7 +69,14 @@ Pour chaque exercice : fais 10 reps propres, puis 3 reps volontairement mauvaise
 - [ ] Après une séance « facile », les objectifs augmentent la fois suivante
 - [ ] Le check-in « fatigue élevée » remplace la séance par de la récupération
 
-## 5. Divers
+## 5. Nouveautés V3
+- [ ] Boss de la semaine : modificateur appliqué (ex. Enragé attaque plus souvent), XP doublée, « Vaincu cette semaine »
+- [ ] Défi : créer un défi, l'envoyer par WhatsApp/SMS, l'ouvrir sur le téléphone d'un ami, le relever, renvoyer le lien
+- [ ] Éditeur : changer un jour, remplacer un exercice, vérifier que la séance du jour suit tes choix
+- [ ] Photos : activer, prendre une photo, comparer avant / après, puis tout supprimer
+- [ ] Rappels : importer le fichier agenda (iPhone et Android), recevoir l'alarme ; notifications sur Android / PC
+
+## 6. Divers
 - [ ] Minuteur de rounds : cloche, 10 dernières secondes, combinaisons annoncées
 - [ ] Démos animées lisibles sur petit écran
 - [ ] Liens « Voir des vidéos tuto » ouvrent YouTube

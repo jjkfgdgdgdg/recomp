@@ -16,7 +16,7 @@ export function renderPlan(root) {
   const wIdx = weekIndex(s.profile, today);
   clear(root);
   root.append(h('section', { class: 'page-head' },
-    h('h1', null, 'Mon programme'),
+    h('div', { class: 'row between' }, h('h1', null, 'Mon programme'), h('button', { class: 'btn ghost small', onclick: () => navigate('#/editor') }, '✏️ Modifier')),
     h('p', { class: 'muted' }, `Semaine ${wIdx}${isDeload(s.profile, today) ? ' · 🔋 décharge' : ''} · ${s.profile.days.length} séances de ${s.profile.sessionMinutes} min`)));
 
   // ---- Semaine

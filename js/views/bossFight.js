@@ -11,7 +11,7 @@ import { say, voiceParams } from '../voice.js';
 import { getState, update } from '../store.js';
 import { todayISO, formatDuration } from '../engine/dates.js';
 import {
-  BOSS, MODE, bossHp, phaseTarget, repDamage, holdDamage, hitDamage, playerMaxHp, bossAttackDamage, grade, bossXp, comboMult,
+  BOSS, MODE, bossHp, phaseTarget, repDamage, holdDamage, hitDamage, playerMaxHp, bossAttackDamage, grade, bossXp, comboMult, eventHp,
 } from '../game/bosses.js';
 import { monsterSvg } from '../game/monster.js';
 import { award, bump, playerSummary } from '../game/service.js';
@@ -19,14 +19,17 @@ import { award, bump, playerSummary } from '../game/service.js';
 const GRACE = 8; // secondes sans attaque au début de chaque phase
 const BREAK = 12; // pause entre deux phases pour se replacer
 
-export function openBossFight(bossId, { manual = false, onDone } = {}) {
-  const boss = BOSS[bossId];
-  if (!boss) return;
+export function openBossFight(bossId, { manual = false, onDone, event = null } = {}) {
+  const base = BOSS[bossId];
+  if (!base) return;
+  const mod = event?.modifier || {};
+  // En événement, le boss est adapté au rang du joueur
+  const boss = event ? { ...base, rank: event.rank, attack: { ...base.attack, every: Math.round(base.attack.every * (mod.attackFactor || 1)) } } : base;
   unlockAudio();
   const profile = getState().profile;
   const ps = playerSummary();
   const stats = ps.stats;
-  const hps = bossHp(boss, profile, ps.level);
+  const hps = event ? eventHp(base, profile, ps.level, event) : bossHp(boss, profile, ps.level);
   const totalHp = hps.reduce((a, b) => a + b, 0);
   const phaseHpLeft = [...hps];
   const vp = voiceParams();
@@ -83,6 +86,8 @@ export function openBossFight(bossId, { manual = false, onDone } = {}) {
 
   const intro = h('div', { class: 'coach-place bf-intro' },
     h('div', { class: 'place-title' }, `⚔️ ${boss.name}`),
+    event ? h('div', { class: 'event-tag' }, `📅 Boss de la semaine · ${mod.emoji} ${mod.name} · XP ×${event.xpMult}`) : null,
+    event ? h('p', { class: 'small' }, mod.desc) : null,
     h('p', { class: 'small' }, boss.lore),
     h('ol', { class: 'small bf-phases' }, boss.phases.map((p, i) => h('li', null, h('b', null, p.move), ` — ${describeTarget(phaseTarget(p, profile, ps.level, boss.rank))}`))),
     h('p', { class: 'small muted' }, manual
@@ -115,7 +120,7 @@ export function openBossFight(bossId, { manual = false, onDone } = {}) {
         setFeedback({ text: cameraErrorMessage(err), level: 'bad' });
         startBtn.disabled = false;
         startBtn.textContent = 'Combattre sans caméra';
-        startBtn.onclick = () => { close(); openBossFight(bossId, { manual: true, onDone }); };
+        startBtn.onclick = () => { close(); openBossFight(bossId, { manual: true, onDone, event }); };
       });
   }
 
@@ -144,6 +149,7 @@ export function openBossFight(bossId, { manual = false, onDone } = {}) {
     const ph = boss.phases[f.phase];
     f.state = 'fight';
     f.tracker = TRACKERS[ph.tracker].make();
+    if (mod.tempo) f.tracker.setTempo?.(mod.tempo);
     f.phaseStart = performance.now();
     f.nextAttack = f.phaseStart + (GRACE + boss.attack.every) * 1000;
     f.attack = null;
@@ -226,7 +232,9 @@ export function openBossFight(bossId, { manual = false, onDone } = {}) {
     if (f.state !== 'fight') return;
     if (ev.valid) {
       f.valid += 1;
-      const r = repDamage({ valid: true, score: ev.score ?? 100, combo: f.combo, str: stats.str, tec: stats.tec, manual: !!ev.manualRep });
+      const r = repDamage({
+        valid: true, score: ev.score ?? 100, combo: f.combo, str: stats.str, tec: stats.tec, manual: !!ev.manualRep, critMult: mod.critMult || 2, comboMax: mod.comboMax || 2,
+      });
       f.combo += 1;
       f.maxCombo = Math.max(f.maxCombo, f.combo);
       if (f.attack) f.attack.progress += 1;
@@ -296,6 +304,11 @@ export function openBossFight(bossId, { manual = false, onDone } = {}) {
   function tick() {
     if (f.state !== 'fight') return;
     const now = performance.now();
+    if (mod.timeLimit) {
+      const left = mod.timeLimit - (now - f.startedAt) / 1000;
+      phaseEl.textContent = `Phase ${f.phase + 1}/${boss.phases.length} · ${boss.phases[f.phase].move} · ⏱ ${formatDuration(Math.max(0, left))}`;
+      if (left <= 0) { endFight(false); return; }
+    }
     if (f.manualHold) {
       const d = f.manualHold();
       if (d > 0) { hitBoss(holdDamage(d, true, stats.str) * 0.6, false, true); if (f.attack) f.attack.progress += d; f.phaseLogs[f.phase].holdSec += d; countEl.textContent = `${Math.floor(f.phaseLogs[f.phase].holdSec)} s tenues`; }
@@ -360,7 +373,7 @@ export function openBossFight(bossId, { manual = false, onDone } = {}) {
     php.style.width = `${(f.playerHp / f.playerMax) * 100}%`;
     php.classList.toggle('low', f.playerHp / f.playerMax < 0.3);
     phpText.textContent = `${f.playerHp} / ${f.playerMax}`;
-    comboEl.textContent = f.combo >= 2 ? `Combo ×${f.combo} · dégâts ×${comboMult(f.combo).toFixed(2)}` : '';
+    comboEl.textContent = f.combo >= 2 ? `Combo ×${f.combo} · dégâts ×${comboMult(f.combo, mod.comboMax || 2).toFixed(2)}` : '';
     comboEl.classList.toggle('hot', f.combo >= 10);
   }
 
@@ -385,7 +398,7 @@ export function openBossFight(bossId, { manual = false, onDone } = {}) {
     let g = grade({ won, accuracy, hpLeftPct: f.playerHp / f.playerMax });
     if (manual && (g === 'S' || g === 'A')) g = 'B'; // sans caméra, la technique n'est pas vérifiée
     root.classList.add('ended');
-    const xp = abandoned ? 0 : bossXp(boss, won, g);
+    const xp = abandoned ? 0 : Math.round(bossXp(boss, won, g) * (event && won ? event.xpMult : 1));
     if (won) { monster.classList.add('dead'); bell(3); say('victory', { interrupt: true }); } else if (!abandoned) say('defeat', { interrupt: true });
     saveResult(won, g, timeSec, abandoned);
     if (xp) award(xp, boss.mt ? { agi: 0.4, end: 0.3, tec: 0.3 } : { str: 0.5, end: 0.3, tec: 0.2 }, won ? `Boss vaincu : ${boss.name}` : 'Combat de boss');
@@ -401,7 +414,7 @@ export function openBossFight(bossId, { manual = false, onDone } = {}) {
       h('p', { class: 'muted small' }, `${Math.round(f.dealt)} dégâts infligés · ${f.valid} reps propres · ${f.invalid} ratées`),
       xp ? h('div', { class: 'badge gold' }, `+${xp} XP`) : null,
       h('div', { class: 'row gap' },
-        h('button', { class: 'btn ghost light', onclick: () => { close(); openBossFight(bossId, { manual, onDone }); } }, 'Rejouer'),
+        h('button', { class: 'btn ghost light', onclick: () => { close(); openBossFight(bossId, { manual, onDone, event }); } }, 'Rejouer'),
         h('button', { class: 'btn primary', onclick: () => close() }, 'Retour à l’arène')));
     root.append(card);
   }
@@ -417,6 +430,12 @@ export function openBossFight(bossId, { manual = false, onDone } = {}) {
         if (!b.bestTimeSec || timeSec < b.bestTimeSec) b.bestTimeSec = timeSec;
       } else if (!abandoned) b.losses += 1;
       s.game.bosses[bossId] = b;
+      if (event) {
+        const e = s.game.events?.[event.key] || { bossId, modifier: event.modifier.id, tries: 0, won: false };
+        e.tries += 1;
+        if (won && !e.won) { e.won = true; e.grade = g; e.timeSec = timeSec; s.game.counters.weeklyWins = (s.game.counters.weeklyWins || 0) + 1; }
+        s.game.events = { ...(s.game.events || {}), [event.key]: e };
+      }
       // Les reps du combat comptent pour les quêtes et l'historique caméra
       boss.phases.forEach((ph, i) => {
         const l = f.phaseLogs[i];

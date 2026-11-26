@@ -44,6 +44,12 @@ export function renderProfile(root) {
     h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Modèle de détection du squelette'),
       chips([{ id: 'lite', label: '⚡ Rapide (conseillé sur téléphone)' }, { id: 'full', label: '🎯 Précis (PC / téléphone récent)' }], s.settings.model, { multi: false, onChange: (v) => set('model', v) }))));
 
+  // ---- Rappels
+  root.append(h('section', { class: 'card soft' },
+    h('div', { class: 'card-title' }, '⏰ Rappels'),
+    h('p', { class: 'small muted' }, 'Séances et quêtes dans ton agenda, ou notifications de l\u2019app.'),
+    h('button', { class: 'btn ghost', onclick: () => navigate('#/reminders') }, 'Configurer mes rappels')));
+
   // ---- Installer
   root.append(h('section', { class: 'card soft' },
     h('div', { class: 'card-title' }, '📲 Installer l\u2019app (téléphone, tablette, PC)'),

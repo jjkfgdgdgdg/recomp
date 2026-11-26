@@ -22,6 +22,18 @@ si ton dos est droit, si ta garde est haute…
 - **Académie** : ~90 fiches d'exercices avec démo animée, erreurs, respiration, variantes et vidéos,
   12 guides (muscle, nutrition, compléments, Muay Thai…) et carte musculaire de la semaine.
 
+## Nouveautés V3
+
+- **27 exercices suivis par la caméra** (56 fiches compatibles) : + tractions, dips, rowing, soulevé de terre roumain,
+  kettlebell swing, pompes piquées, mountain climbers, relevés de jambes / de genoux, chaise, mollets, corde à sauter.
+- **Tempo des reps** : durée de la descente et de la montée, pause entre les reps, cadence ; alerte « contrôle la descente »,
+  mode **tempo lent** (2 s au retour) pour la prise de muscle.
+- **Boss de la semaine** : un boss + un modificateur différent chaque lundi, adapté à ton niveau, XP ×2.
+- **Défis entre amis par lien** : fais ton score, envoie le lien (WhatsApp, Snap, SMS…), tes amis répondent. Sans compte, sans serveur.
+- **Éditeur de programme** : change la séance de chaque jour, remplace / ajoute / retire des exercices, règle les séries.
+- **Photos de progression** (optionnel, désactivé par défaut) : stockées uniquement sur ton appareil, comparateur avant / après.
+- **Rappels** : séances et quêtes dans l'agenda du téléphone (.ics / Google Agenda) + notifications de l'app.
+
 ## Ce que fait l'app
 
 | Onglet | Contenu |
@@ -39,7 +51,13 @@ si ton dos est droit, si ta garde est haute…
 
 ## Mettre l'app en ligne (une seule fois, 5 minutes, gratuit)
 
-L'app est un site statique : il suffit de l'héberger en **HTTPS** (obligatoire pour la caméra et l'installation).
+**Tout reste gratuit, pour toujours** : Recomp n'a **aucun serveur à payer**.
+- L'app est un simple site statique (HTML/JS) → hébergement gratuit (GitHub Pages, Cloudflare Pages ou Netlify).
+- Les **défis entre amis** passent par le **lien** partagé (le classement est dans le lien) → pas de base de données.
+- Les **rappels** passent par l'**agenda** du téléphone et les notifications du navigateur → pas de serveur d'envoi.
+- Les **données et photos** restent sur chaque appareil (export / import pour changer de téléphone).
+
+Il suffit d'héberger le site en **HTTPS** (obligatoire pour la caméra et l'installation).
 Ensuite, **la même adresse marche sur téléphone, tablette et PC**.
 
 ### Option A — GitHub Pages (le plus simple, dépôt public)
@@ -78,6 +96,10 @@ npm start          # puis ouvre http://localhost:8080
 ```
 
 (Node.js 18+ suffit, aucune dépendance. La caméra fonctionne sur `localhost`, pas sur l'adresse réseau du PC depuis un téléphone.)
+
+> Plus tard, si tu veux un **classement en ligne en direct** (sans renvoyer de lien), il faudra un petit serveur.
+> Il existe des offres gratuites (Cloudflare Workers + D1, Supabase…) mais elles demandent de créer un compte :
+> ce n'est pas nécessaire pour utiliser l'app.
 
 ## Conseils pour le coach caméra
 

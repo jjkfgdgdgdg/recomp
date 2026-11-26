@@ -7,6 +7,7 @@ import { TRACKERS } from '../pose/trackers.js';
 import { TYPE_META } from '../engine/planner.js';
 import { streak, latestWeight } from '../services.js';
 import { emptyState } from './common.js';
+import { photosSection } from './photos.js';
 import { award } from '../game/service.js';
 import { SPLIT } from '../game/leveling.js';
 
@@ -55,6 +56,9 @@ export function renderProgress(root) {
     weightSummary(s.logs.weights, s.profile),
     h('p', { class: 'small muted' }, 'Pèse-toi le matin, à jeun, après être passé aux toilettes. Regarde la tendance sur 2-3 semaines, pas le chiffre d’un jour.'));
   root.append(weightCard);
+
+  // ---- Photos de progression (optionnel)
+  root.append(photosSection());
 
   // ---- Records caméra
   const recs = Object.entries(s.records);
