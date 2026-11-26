@@ -26,7 +26,7 @@ Recomp transforme tes bonnes habitudes en monnaie. Chaque habitude cochée rappo
 
 ### Sur claude.ai (le plus simple)
 
-L'appli est publiée sur claude.ai, comme une page privée. Ouvre le lien sur ton téléphone ou ton PC : tes données sont **liées à ton compte Claude** et se synchronisent entre tes appareils. Personne d'autre ne peut les voir, même si tu partages le lien.
+L'appli est publiée sur claude.ai, comme une page privée : **https://claude.ai/artifact/RAkU83gfPvA7XAg2Hb7mk4**. Ouvre ce lien sur ton téléphone ou ton PC : tes données sont **liées à ton compte Claude** et se synchronisent entre tes appareils. Personne d'autre ne peut les voir, même si tu partages le lien.
 
 ### En local
 
@@ -49,7 +49,7 @@ Héberge le dossier `dist/` produit par `npm run build` sur n'importe quel hébe
 npm test              # tests de la logique (séries, bonus, niveaux, minuteur, sauvegarde)
 npm run typecheck     # vérification TypeScript
 npm run build         # build de production dans dist/
-npm run build:artifact  # page unique dans dist-artifact/recomp.html, pour la publier sur claude.ai
+npm run build:artifact  # page unique dans dist-artifact/recomp.html, à republier sur claude.ai après une modification
 ```
 
 - **Stack** : [Preact](https://preactjs.com) + TypeScript + Vite, aucune autre dépendance. L'appli complète pèse environ 25 Ko compressés.
