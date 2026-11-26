@@ -1,0 +1,81 @@
+/**
+ * @name FondPerso
+ * @author recomp
+ * @description Fond d'écran personnalisé pour Discord, avec flou, assombrissement et transparence des panneaux réglables. Compatible BetterDiscord et Vencord.
+ * @version 1.0.0
+ */
+
+/* ======================================================================
+   RÉGLAGES — c'est la seule partie à modifier
+   ====================================================================== */
+:root {
+  /* Ton image. Remplace le dégradé par : url("https://i.imgur.com/TON_IMAGE.png")
+     (un GIF animé fonctionne aussi). Le dégradé sert seulement de démo. */
+  --fp-image: linear-gradient(135deg, #3a1c71 0%, #d76d77 55%, #ffaf7b 100%);
+
+  --fp-flou: 0px;               /* 0px = net, 8px = flou léger, 20px = très flou */
+  --fp-assombrir: 0.35;         /* 0 = image brute, 0.9 = presque noire (lisibilité du texte) */
+  --fp-opacite-panneaux: 0.35;  /* 0 = panneaux invisibles, 1 = panneaux opaques */
+
+  --fp-position: center;        /* center, top, bottom, left, right… */
+  --fp-taille: cover;           /* cover = remplir, contain = image entière, 100% 100% = étirer */
+  --fp-repetition: no-repeat;   /* repeat pour une image en mosaïque */
+}
+
+/* ======================================================================
+   MÉCANIQUE — pas besoin de toucher en dessous
+   ====================================================================== */
+
+/* Couleur de base des panneaux : sombre en thème sombre, claire en thème clair */
+.theme-dark,
+.theme-darker,
+.theme-midnight {
+  --fp-teinte: 0 0 0;
+}
+.theme-light {
+  --fp-teinte: 255 255 255;
+}
+
+/* L'image est posée derrière toute l'interface */
+html {
+  background: #000 !important;
+}
+body,
+#app-mount {
+  background: transparent !important;
+}
+body::before {
+  content: "";
+  position: fixed;
+  /* on déborde un peu de l'écran pour que le flou n'ait pas de bords clairs */
+  inset: calc(var(--fp-flou) * -2);
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--fp-image);
+  background-position: var(--fp-position);
+  background-size: var(--fp-taille);
+  background-repeat: var(--fp-repetition);
+  filter: blur(var(--fp-flou)) brightness(calc(1 - var(--fp-assombrir)));
+}
+
+/* Les fonds de Discord deviennent transparents ou semi-transparents.
+   Les menus, popups et fenêtres restent opaques pour rester lisibles.
+   Les deux générations de noms de variables de Discord sont couvertes. */
+:is(.theme-dark, .theme-light, .theme-darker, .theme-midnight) {
+  /* Cadre de l'application et liste des serveurs */
+  --background-base-lowest: transparent !important;
+  --background-tertiary: transparent !important;
+  --bg-base-tertiary: transparent !important;
+
+  /* Liste des salons, liste des membres, barre utilisateur */
+  --background-base-lower: rgb(var(--fp-teinte) / var(--fp-opacite-panneaux)) !important;
+  --background-secondary: rgb(var(--fp-teinte) / var(--fp-opacite-panneaux)) !important;
+  --background-secondary-alt: rgb(var(--fp-teinte) / var(--fp-opacite-panneaux)) !important;
+  --bg-base-secondary: rgb(var(--fp-teinte) / var(--fp-opacite-panneaux)) !important;
+
+  /* Zone de discussion (plus légère pour laisser voir l'image) */
+  --background-base-low: rgb(var(--fp-teinte) / calc(var(--fp-opacite-panneaux) * 0.5)) !important;
+  --background-primary: rgb(var(--fp-teinte) / calc(var(--fp-opacite-panneaux) * 0.5)) !important;
+  --bg-base-primary: rgb(var(--fp-teinte) / calc(var(--fp-opacite-panneaux) * 0.5)) !important;
+  --chat-background-default: rgb(var(--fp-teinte) / calc(var(--fp-opacite-panneaux) * 0.5)) !important;
+}
