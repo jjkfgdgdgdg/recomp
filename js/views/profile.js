@@ -6,6 +6,7 @@ import { EQUIPMENT, INJURIES } from '../data/exercises.js';
 import { DAY_SHORT, todayISO } from '../engine/dates.js';
 import { navigate } from '../router.js';
 import { speak, unlockAudio } from '../audio.js';
+import { PERSONAS, say } from '../voice.js';
 
 const LEVEL = ['Jamais', 'Débutant', 'Intermédiaire', 'Avancé'];
 
@@ -32,6 +33,12 @@ export function renderProfile(root) {
   root.append(h('section', { class: 'card' },
     h('div', { class: 'card-title' }, '⚙️ Réglages'),
     toggleRow('Voix du coach', 'Annonces, corrections et combinaisons à voix haute', s.settings.voice, (v) => { set('voice', v); if (v) { unlockAudio(); speak('Voix du coach activée'); } }),
+    h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Personnalité du coach'),
+      chips(Object.entries(PERSONAS).map(([id, p]) => ({ id, label: `${p.emoji} ${p.label}` })), s.settings.persona || 'calm', {
+        multi: false,
+        onChange: (v) => { set('persona', v); unlockAudio(); say('start', { interrupt: true }); },
+      }),
+      h('span', { class: 'hint' }, 'Hardcore : répliques sans pitié, voix grave. Les répliques sont originales (pas la voix d\u2019une personne réelle).')),
     toggleRow('Compter les reps à voix haute', 'Le coach dit 1, 2, 3…', s.settings.voiceCounts !== false, (v) => set('voiceCounts', v)),
     toggleRow('Sons (bips, cloche)', null, s.settings.sound, (v) => set('sound', v)),
     h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Modèle de détection du squelette'),

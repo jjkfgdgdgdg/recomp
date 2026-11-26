@@ -12,6 +12,11 @@ import { renderProgress } from './views/progress.js';
 import { renderWellness } from './views/wellness.js';
 import { renderProfile } from './views/profile.js';
 import { renderTimer } from './views/timer.js';
+import { renderArena } from './views/arena.js';
+import { renderHero } from './views/hero.js';
+import { renderAcademy, renderGuide } from './views/academy.js';
+import { renderLibrary, renderExercise } from './views/library.js';
+import { ensureGame, checkTitles } from './game/service.js';
 
 load();
 
@@ -20,17 +25,17 @@ const tabbar = document.getElementById('tabbar');
 const topbar = document.getElementById('topbar');
 
 const TABS = [
-  { path: '/today', label: 'Aujourd’hui', icon: 'home' },
+  { path: '/today', label: 'Accueil', icon: 'home', also: ['/wellness', '/timer'] },
   { path: '/plan', label: 'Programme', icon: 'calendar' },
-  { path: '/coach', label: 'Coach', icon: 'camera' },
-  { path: '/progress', label: 'Progrès', icon: 'chart' },
-  { path: '/wellness', label: 'Bien-être', icon: 'leaf' },
+  { path: '/arena', label: 'Arène', icon: 'sword', also: ['/coach'] },
+  { path: '/academy', label: 'Académie', icon: 'book', also: ['/library', '/exercise', '/guide'] },
+  { path: '/hero', label: 'Héros', icon: 'shield', also: ['/progress'] },
 ];
 
 function renderTabs(path) {
   clear(tabbar);
   TABS.forEach((t) => {
-    const on = path.startsWith(t.path);
+    const on = path.startsWith(t.path) || (t.also || []).some((p) => path.startsWith(p));
     tabbar.append(h('a', { href: `#${t.path}`, class: `tab${on ? ' on' : ''}`, 'aria-current': on ? 'page' : null }, icon(t.icon), h('span', null, t.label)));
   });
 }
@@ -50,7 +55,7 @@ function screen(render, { shell = true, needsProfile = true } = {}) {
       navigate('#/onboarding', { replace: true });
       return null;
     }
-    if (s.profile) ensurePlan();
+    if (s.profile) { ensurePlan(); ensureGame(); }
     document.body.classList.toggle('bare', !shell);
     if (shell) { renderTabs(path); renderTop(path); }
     clear(view);
@@ -75,11 +80,18 @@ route('/progress', screen(renderProgress));
 route('/wellness', screen(renderWellness));
 route('/profile', screen(renderProfile));
 route('/timer', screen(renderTimer));
+route('/arena', screen(renderArena));
+route('/hero', screen(renderHero));
+route('/academy', screen(renderAcademy));
+route('/guide/:id', screen(renderGuide));
+route('/library', screen(renderLibrary));
+route('/exercise/:id', screen(renderExercise));
 
 if (!getState().profile && currentPath() !== '/onboarding') {
   history.replaceState(null, '', '#/onboarding');
 }
 startRouter();
+if (getState().profile) setTimeout(() => checkTitles(), 800);
 
 // Service worker : fonctionnement hors ligne + installation sur l'écran d'accueil
 if ('serviceWorker' in navigator && location.protocol !== 'file:' && !navigator.webdriver) {

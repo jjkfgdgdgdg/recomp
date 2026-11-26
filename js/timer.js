@@ -2,6 +2,9 @@
 import { bell, beep, clap, countdownBeep, speak } from './audio.js';
 import { EX } from './data/exercises.js';
 import { combosForLevel, ENCOURAGEMENTS } from './data/muaythai.js';
+import { line, persona, voiceParams } from './voice.js';
+
+const talk = (text, o = {}) => speak(text, { ...voiceParams(), ...o });
 
 export function roundSteps({ rounds, work, rest, prep = 10, label = 'Round' }) {
   const steps = [{ kind: 'prep', secs: prep, label: 'En position' }];
@@ -88,13 +91,13 @@ export class PhaseTimer {
     if (!first || st.kind !== 'prep') {
       if (st.kind === 'work') {
         if (st.bell) bell(1); else beep(990, 0.3, 0.3);
-        speak(st.exId ? st.label : 'C’est parti !', { interrupt: true });
+        talk(st.exId ? st.label : 'C\u2019est parti !', { interrupt: true });
       } else if (st.kind === 'rest') {
         if (st.bell) bell(2); else beep(440, 0.3, 0.25);
-        speak(st.next ? `Repos. Prochain : ${st.next}` : 'Repos, respire.', { interrupt: true });
+        talk(st.next ? `Repos. Prochain : ${st.next}` : 'Repos, respire.', { interrupt: true });
       }
     } else if (st.kind === 'prep') {
-      speak(st.next ? `Prépare-toi. Premier exercice : ${st.next}` : 'Mets-toi en garde', { interrupt: true });
+      talk(st.next ? `Prépare-toi. Premier exercice : ${st.next}` : 'Mets-toi en garde', { interrupt: true });
     }
     this.nextCombo = st.kind === 'work' && this.comboList ? 3 + Math.random() * 2 : null;
     this.opts.onStep?.(st, i);
@@ -114,19 +117,19 @@ export class PhaseTimer {
       this.prevWhole = whole;
       if (whole <= 3 && whole > 0 && st.kind !== 'work') countdownBeep(whole);
       if (whole <= 3 && whole > 0 && st.kind === 'work' && !st.bell) countdownBeep(whole);
-      if (st.kind === 'work' && st.bell && whole === 10) { clap(); speak('10 secondes, accélère !', { interrupt: true }); }
+      if (st.kind === 'work' && st.bell && whole === 10) { clap(); talk('10 secondes, accélère !', { interrupt: true }); }
     }
     if (this.nextCombo !== null && st.kind === 'work') {
       const into = st.secs - this.remaining;
       if (into >= this.nextCombo && this.remaining > 4) {
         const [a, b] = this.opts.comboEvery || [4, 7];
         let text;
-        if (Math.random() < 0.12) text = ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
+        if (Math.random() < 0.12) text = persona() === 'hardcore' && Math.random() < 0.5 ? line('milestone') : ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
         else {
           do { text = this.comboList[Math.floor(Math.random() * this.comboList.length)]; } while (text === this.lastCombo && this.comboList.length > 1);
           this.lastCombo = text;
         }
-        speak(text, { interrupt: true, rate: 1.15 });
+        talk(text, { interrupt: true, rate: 1.15 });
         this.opts.onCombo?.(text);
         this.nextCombo = into + a + Math.random() * (b - a);
       }
@@ -143,7 +146,7 @@ export class PhaseTimer {
     this.stop();
     this.remaining = 0;
     bell(3);
-    speak('Terminé ! Excellent travail.', { interrupt: true });
+    talk(line('finish') || 'Terminé ! Excellent travail.', { interrupt: true });
     this.emit();
     this.opts.onDone?.();
   }

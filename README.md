@@ -12,6 +12,16 @@ si ton dos est droit, si ta garde est haute…
 
 > Le cahier des charges complet (le « prompt » de l'app) est dans [`PROMPT.md`](PROMPT.md).
 
+## Nouveautés V2 : mode RPG ⚔️
+
+- **Niveaux, rangs E → S, 5 stats** (Force, Endurance, Agilité, Technique, Mental) et **titres** à débloquer.
+- **Quêtes quotidiennes** adaptées à ton niveau, coffre bonus, et **quête de pénalité** si tu zappes.
+- **Combats de boss** : chaque rep propre validée par la caméra inflige des dégâts. Technique parfaite = critiques,
+  enchaînements = combo jusqu'à ×2. Le boss attaque : enchaîne vite des reps pour esquiver !
+- **Coach Hardcore** : une personnalité vocale sans pitié (répliques originales), à activer dans Profil → Réglages.
+- **Académie** : ~90 fiches d'exercices avec démo animée, erreurs, respiration, variantes et vidéos,
+  12 guides (muscle, nutrition, compléments, Muay Thai…) et carte musculaire de la semaine.
+
 ## Ce que fait l'app
 
 | Onglet | Contenu |
@@ -22,7 +32,9 @@ si ton dos est droit, si ta garde est haute…
 | **Séance guidée** | Exercice par exercice, minuteur de repos, saisie des reps et de la charge, ressenti → **progression automatique** (reps, charge, variante plus dure) |
 | **Coach caméra** | Squelette en direct + compteur + corrections : pompes, squats, fentes, gainage, pont fessier, curl, développé épaules, jumping jacks, montées de genoux, burpees/sprawls, **coups de pied, coups de genou, shadow boxing avec contrôle de la garde**. Tests de niveau filmés qui recalibrent le programme |
 | **Minuteur Muay Thai** | Rounds/repos avec cloche, et **coach vocal qui annonce des combinaisons** (« jab, cross, low kick ! ») adaptées à ton niveau |
-| **Progrès** | Courbe de poids + moyenne 7 jours, ajustement calorique automatique, records, tests, historique |
+| **Arène** | Combats de boss à la caméra + coach caméra libre + tests de niveau |
+| **Académie** | Bibliothèque d'exercices avec démos animées, guides, carte musculaire |
+| **Héros** | Niveau, rang, radar des stats, titres, trophées ; accès aux progrès (poids, records, historique) |
 | **Bien-être** | Respiration guidée (cohérence cardiaque, carrée, 4-7-8), routines de mobilité, suivi du sommeil |
 
 ## Utiliser l'app
@@ -81,9 +93,11 @@ npm start          # puis ouvre http://localhost:8080
 ```
 index.html, css/, icons/, manifest.webmanifest, sw.js   → coquille PWA
 js/engine/     → nutrition, planification, progression, forme (fonctions pures)
+js/game/       → XP/niveaux/stats/titres, quêtes, boss, monstres SVG
 js/pose/       → détection (MediaPipe), géométrie, compteurs de reps, dessin du squelette
 js/views/      → écrans
-js/data/       → exercices (~90), combinaisons de Muay Thai, idées de repas
+js/data/       → exercices (~90), technique, guides, muscles, combinaisons de Muay Thai, idées de repas
+js/voice.js    → personnalités du coach (bienveillant / Hardcore)
 vendor/        → MediaPipe Tasks Vision 0.10.35 + modèles Pose Landmarker (Apache 2.0)
 tests/         → tests (node --test)
 ```

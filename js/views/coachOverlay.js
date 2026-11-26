@@ -1,15 +1,17 @@
 // Coach caméra plein écran : vidéo + squelette + compteur + corrections vocales.
 import { h, icon, clear, toast } from '../ui.js';
-import { getDetector, startCamera, stopCamera } from '../pose/detector.js';
 import { drawSkeleton } from '../pose/draw.js';
-import { normalize } from '../pose/geometry.js';
 import { TRACKERS } from '../pose/trackers.js';
+import { createStage, cameraErrorMessage } from '../pose/stage.js';
 import {
   speak, beep, success, unlockAudio, keepAwake, stopSpeaking, vibrate, countdownBeep,
 } from '../audio.js';
+import { say, voiceParams } from '../voice.js';
 import { getState, update } from '../store.js';
 import { PhaseTimer, roundSteps } from '../timer.js';
 import { formatDuration, todayISO } from '../engine/dates.js';
+import { award, bump } from '../game/service.js';
+import { cameraXp, SPLIT } from '../game/leveling.js';
 
 /**
  * opts = {
@@ -22,33 +24,22 @@ import { formatDuration, todayISO } from '../engine/dates.js';
  */
 export function openCoach(opts) {
   const def = TRACKERS[opts.trackerId];
-  if (!def) { toast('Exercice non compatible caméra'); return; }
+  if (!def) { toast('Exercice non compatible caméra'); return null; }
   unlockAudio();
   const settings = getState().settings;
-  let facing = 'user';
-  let stream = null;
-  let detector = null;
   let tracker = null;
   let preview = def.make();
-  let running = false; // boucle de détection
   let active = false; // comptage actif
   let finished = false;
-  let raf = null;
-  let lastVideoTime = -1;
   let lastBadSpoken = 0;
   let countdownTimer = null;
   let phaseTimer = null;
   let startedAt = 0;
-  let frames = 0; let fpsT = performance.now(); let fps = 0;
   let noPoseSince = null;
   let limitTimer = null;
   let lastLimitWhole = null;
-
-  const video = h('video', { class: 'coach-video', playsinline: true, muted: true, autoplay: true });
-  const canvas = h('canvas', { class: 'coach-canvas' });
-  const ctx = canvas.getContext('2d');
-  const inner = h('div', { class: 'coach-inner' }, video, canvas);
-  const stage = h('div', { class: 'coach-stage' }, inner);
+  const vp = voiceParams();
+  const talk = (text, o = {}) => speak(text, { ...vp, ...o });
 
   const countEl = h('div', { class: 'hud-count' }, '0');
   const targetEl = h('div', { class: 'hud-target' }, '');
@@ -64,6 +55,21 @@ export function openCoach(opts) {
   const hud = h('div', { class: 'coach-hud' },
     h('div', { class: 'hud-topleft' }, h('div', { class: 'hud-countwrap' }, countEl, targetEl), partialEl, metricEl),
     gauge, comboEl, bigMsg, feedbackEl, fpsEl);
+
+  const stage = createStage({
+    onFps: (f) => { fpsEl.textContent = `${f} img/s`; },
+    onNoPose: (now) => {
+      if (noPoseSince === null) noPoseSince = now;
+      if (now - noPoseSince > 600) setFeedback({ text: 'Je ne te vois pas : recule et mets tout ton corps dans l’image', level: 'warn' });
+    },
+    onPose: (lm, pts, now) => {
+      noPoseSince = null;
+      const st = active ? tracker.update(pts, now) : preview.update(pts, now);
+      drawSkeleton(stage.ctx, lm, st.joints);
+      render(st);
+      if (active) handleEvents(st);
+    },
+  });
 
   const voiceBtn = h('button', { class: 'icon-btn light', 'aria-label': 'Voix du coach', onclick: () => toggleVoice() }, icon(settings.voice ? 'volume' : 'mute'));
   const startBtn = h('button', { class: 'btn primary big', disabled: true }, 'Chargement du coach…');
@@ -81,9 +87,9 @@ export function openCoach(opts) {
     h('div', { class: 'coach-top' },
       h('button', { class: 'icon-btn light', 'aria-label': 'Fermer', onclick: () => close(null) }, icon('close')),
       h('div', { class: 'coach-title' }, opts.title || def.label),
-      h('button', { class: 'icon-btn light', 'aria-label': 'Changer de caméra', onclick: () => flip() }, icon('flip')),
+      h('button', { class: 'icon-btn light', 'aria-label': 'Changer de caméra', onclick: () => stage.flip().catch((e) => toast(e.message)) }, icon('flip')),
       voiceBtn),
-    stage, hud, placeCard, bottom);
+    stage.el, hud, placeCard, bottom);
   document.body.append(root);
   document.body.classList.add('no-scroll');
   keepAwake(true);
@@ -100,55 +106,19 @@ export function openCoach(opts) {
     if (!getState().settings.voice) stopSpeaking();
   }
 
-  function fit() {
-    if (!video.videoWidth) return;
-    const box = stage.getBoundingClientRect();
-    const s = Math.min(box.width / video.videoWidth, box.height / video.videoHeight);
-    inner.style.width = `${Math.floor(video.videoWidth * s)}px`;
-    inner.style.height = `${Math.floor(video.videoHeight * s)}px`;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    inner.classList.toggle('mirror', facing === 'user');
-  }
-  window.addEventListener('resize', fit);
-
   async function init() {
     try {
-      feedbackEl.textContent = 'Démarrage de la caméra…';
-      stream = await startCamera(video, facing);
-      fit();
-      feedbackEl.textContent = 'Chargement du squelette (la 1re fois peut prendre quelques secondes)…';
-      detector = await getDetector(getState().settings.model || 'lite');
+      await stage.start((msg) => { feedbackEl.textContent = msg; });
       startBtn.disabled = false;
       startBtn.textContent = opts.rounds ? 'Lancer les rounds' : 'Je suis en place, go !';
       feedbackEl.textContent = 'Place-toi dans l’image';
-      running = true;
-      loop();
     } catch (err) {
       console.error(err);
-      const msg = err?.name === 'NotAllowedError'
-        ? 'Accès caméra refusé. Autorise la caméra dans les réglages du navigateur.'
-        : err?.message || 'Impossible de démarrer la caméra.';
-      feedbackEl.textContent = msg;
+      feedbackEl.textContent = cameraErrorMessage(err);
       feedbackEl.className = 'hud-feedback bad';
       startBtn.textContent = 'Réessayer';
       startBtn.disabled = false;
       startBtn.onclick = () => { startBtn.onclick = () => startCountdown(); init(); };
-    }
-  }
-
-  async function flip() {
-    facing = facing === 'user' ? 'environment' : 'user';
-    stopCamera(stream);
-    try {
-      stream = await startCamera(video, facing);
-      lastVideoTime = -1;
-      fit();
-    } catch {
-      facing = 'user';
-      toast('Une seule caméra disponible');
-      stream = await startCamera(video, facing);
-      fit();
     }
   }
 
@@ -160,17 +130,17 @@ export function openCoach(opts) {
     if (opts.rounds) { startRounds(); return; }
     let n = 5;
     bigMsg.textContent = n;
-    speak('En position', { interrupt: true });
+    say('start', { interrupt: true });
     countdownTimer = setInterval(() => {
       n -= 1;
       if (n > 0) {
         bigMsg.textContent = n;
-        if (n <= 3) { countdownBeep(n); speak(String(n), { interrupt: true }); }
+        if (n <= 3) { countdownBeep(n); talk(String(n), { interrupt: true }); }
       } else {
         clearInterval(countdownTimer);
         bigMsg.textContent = 'GO !';
         countdownBeep(0);
-        speak('C’est parti !', { interrupt: true });
+        talk('Go !', { interrupt: true });
         setTimeout(() => { bigMsg.textContent = ''; }, 700);
         begin();
       }
@@ -187,7 +157,7 @@ export function openCoach(opts) {
         const left = opts.timeLimit - (performance.now() - startedAt) / 1000;
         targetEl.textContent = `⏱ ${Math.max(0, Math.ceil(left))} s`;
         if (left <= 3 && left > 0 && Math.ceil(left) !== lastLimitWhole) { lastLimitWhole = Math.ceil(left); countdownBeep(lastLimitWhole); }
-        if (left <= 0) { clearInterval(limitTimer); success(); speak('Temps écoulé !', { interrupt: true }); finish(); }
+        if (left <= 0) { clearInterval(limitTimer); success(); talk('Temps écoulé !', { interrupt: true }); finish(); }
       }, 200);
     }
   }
@@ -217,37 +187,6 @@ export function openCoach(opts) {
     phaseTimer.start();
   }
 
-  function loop() {
-    if (!running) return;
-    raf = requestAnimationFrame(loop);
-    if (video.readyState < 2 || !detector) return;
-    if (video.currentTime === lastVideoTime) return;
-    lastVideoTime = video.currentTime;
-    const now = performance.now();
-    let result;
-    try {
-      result = detector.detectForVideo(video, now);
-    } catch (e) {
-      console.warn(e);
-      return;
-    }
-    frames += 1;
-    if (now - fpsT > 1000) { fps = frames; frames = 0; fpsT = now; fpsEl.textContent = `${fps} img/s`; }
-    const lm = result?.landmarks?.[0];
-    if (!lm) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (noPoseSince === null) noPoseSince = now;
-      if (now - noPoseSince > 600) setFeedback({ text: 'Je ne te vois pas : recule et mets tout ton corps dans l’image', level: 'warn' });
-      return;
-    }
-    noPoseSince = null;
-    const pts = normalize(lm, video.videoWidth / video.videoHeight);
-    const st = active ? tracker.update(pts, now) : preview.update(pts, now);
-    drawSkeleton(ctx, lm, st.joints);
-    render(st);
-    if (active) handleEvents(st);
-  }
-
   function setFeedback(fb) {
     if (!fb) { feedbackEl.textContent = ''; feedbackEl.className = 'hud-feedback empty'; return; }
     feedbackEl.textContent = fb.text;
@@ -274,16 +213,17 @@ export function openCoach(opts) {
     setFeedback(st.feedback);
     if (st.feedback?.level === 'bad' && performance.now() - lastBadSpoken > 4000) {
       lastBadSpoken = performance.now();
-      speak(st.feedback.text, { minGap: 4000 });
+      talk(st.feedback.text, { minGap: 4000 });
     }
     if (def.mode === 'hold' && targetSecs && st.holdSec >= targetSecs && !finished) {
       success();
-      speak('Objectif atteint, bravo !', { interrupt: true });
+      say('finish', { interrupt: true });
       finish();
     }
   }
 
   function handleEvents(st) {
+    const hard = getState().settings.persona === 'hardcore';
     for (const ev of st.events) {
       if (ev.type === 'rep' && ev.valid) {
         beep(880, 0.08, 0.2);
@@ -291,17 +231,21 @@ export function openCoach(opts) {
         countEl.classList.remove('pop');
         void countEl.offsetWidth;
         countEl.classList.add('pop');
-        if (getState().settings.voiceCounts !== false) speak(String(ev.count), { interrupt: true });
-        if (targetReps && !opts.test && ev.count >= targetReps && !finished) {
+        const done = targetReps && !opts.test && ev.count >= targetReps;
+        if (getState().settings.voiceCounts !== false) talk(String(ev.count), { interrupt: true });
+        if (!done && targetReps && targetReps - ev.count === 2) say('last', { queue: true });
+        else if (!done && ev.count % (hard ? 5 : 10) === 0) say('milestone', { queue: true });
+        if (done && !finished) {
           success();
-          setTimeout(() => speak('Série terminée, bravo !', { interrupt: true }), 500);
+          setTimeout(() => say('finish', { interrupt: true }), 500);
           setTimeout(() => finish(), 900);
         }
       } else if (ev.type === 'rep' && !ev.valid) {
         beep(220, 0.18, 0.25, 'triangle');
-        speak(ev.msg, { interrupt: true, minGap: 2500 });
+        talk(ev.msg, { interrupt: true, minGap: 2500 });
+        if (hard && Math.random() < 0.35) say('bad', { queue: true });
       } else if (ev.type === 'cue') {
-        speak(ev.msg, { minGap: 3500 });
+        talk(ev.msg, { minGap: 3500 });
       }
     }
   }
@@ -323,6 +267,7 @@ export function openCoach(opts) {
       test: !!opts.test,
     };
     const rec = saveCoachLog(summary);
+    rewardSeries(summary, def.mode);
     showSummary(summary, rec);
   }
 
@@ -354,7 +299,7 @@ export function openCoach(opts) {
       s.topErrors.length ? h('div', { class: 'sum-errors' },
         h('div', { class: 'muted small' }, 'À corriger :'),
         s.topErrors.map((e) => h('div', { class: 'err' }, `• ${e.msg} (${e.n}×)`)))
-        : nothing ? h('p', { class: 'muted' }, 'Rien de détecté. Vérifie que tout ton corps est dans l\u2019image et suis les conseils de placement.')
+        : nothing ? h('p', { class: 'muted' }, 'Rien de détecté. Vérifie que tout ton corps est dans l’image et suis les conseils de placement.')
           : h('p', { class: 'muted' }, 'Aucune erreur détectée, technique propre ! 👌'),
       h('div', { class: 'row gap' },
         h('button', { class: 'btn ghost light', onclick: () => restart() }, 'Recommencer'),
@@ -376,16 +321,13 @@ export function openCoach(opts) {
   }
 
   function close(result) {
-    running = false;
     active = false;
-    cancelAnimationFrame(raf);
     clearInterval(countdownTimer);
     clearInterval(limitTimer);
     phaseTimer?.stop();
-    stopCamera(stream);
+    stage.stop();
     stopSpeaking();
     keepAwake(false);
-    window.removeEventListener('resize', fit);
     root.remove();
     document.body.classList.remove('no-scroll');
     opts.onDone?.(result);
@@ -412,4 +354,12 @@ function saveCoachLog(s) {
     }
   });
   return record;
+}
+
+function rewardSeries(s, mode) {
+  const xp = cameraXp(s, mode);
+  if (s.reps) bump('validReps', s.reps);
+  if (mode === 'reps' && s.reps >= 10 && s.partial === 0 && s.score >= 100) bump('perfectSets');
+  bump('camSets');
+  if (xp > 0) award(xp, mode === 'guard' ? SPLIT.guard : SPLIT.camera, 'Série caméra');
 }

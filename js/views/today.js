@@ -10,6 +10,9 @@ import { TYPE_META } from '../engine/planner.js';
 import { typeBadge, sessionList } from './common.js';
 import { navigate } from '../router.js';
 import { MT_TIPS } from '../data/muaythai.js';
+import { playerMini, questsCard } from './quests.js';
+import { award, bump } from '../game/service.js';
+import { SPLIT } from '../game/leveling.js';
 
 const TIPS = [
   'La régularité bat l’intensité : 3 séances par semaine pendant 6 mois valent mieux que 6 pendant 3 semaines.',
@@ -36,6 +39,8 @@ export function renderToday(root) {
       h('h1', null, `${hello}${p.name ? ` ${p.name}` : ''} !`)),
     h('div', { class: 'streak', title: 'Série de jours actifs' }, icon('flame', 18), h('b', null, st), h('span', null, 'jour' + (st > 1 ? 's' : '')))));
 
+  root.append(playerMini());
+
   // ---- Semaine
   const wk = weekDoneCount(iso);
   root.append(h('div', { class: 'week-strip' }, wk.days.map((d, i) => h('div', {
@@ -45,6 +50,9 @@ export function renderToday(root) {
 
   // ---- Check-in
   root.append(checkinCard(iso, () => renderToday(root)));
+
+  // ---- Quêtes du jour
+  root.append(questsCard(iso, () => renderToday(root)));
 
   // ---- Séance du jour
   const session = sessionFor(iso);
@@ -89,7 +97,11 @@ export function renderToday(root) {
     const v = waterFor(iso);
     waterTxt.textContent = `${fmt(v / 1000, 2)} / ${fmt(waterGoal / 1000, 1)} L`;
     waterBar.firstChild.style.width = `${Math.min(100, (v / waterGoal) * 100)}%`;
-    if (v >= waterGoal && v - ml < waterGoal) toast('💧 Objectif d’hydratation atteint !');
+    if (v >= waterGoal && v - ml < waterGoal) {
+      toast('💧 Objectif d\u2019hydratation atteint !');
+      bump('waterDays');
+      award(15, SPLIT.water, 'Hydratation');
+    }
   };
   root.append(h('section', { class: 'grid2 cards' },
     h('div', { class: 'card' },
@@ -110,10 +122,10 @@ export function renderToday(root) {
 
   // ---- Raccourcis
   root.append(h('section', { class: 'quick' },
-    h('button', { class: 'quick-btn', onclick: () => navigate('#/coach') }, h('span', null, '📷'), 'Coach caméra'),
+    h('button', { class: 'quick-btn', onclick: () => navigate('#/arena') }, h('span', null, '⚔️'), 'Boss & caméra'),
     h('button', { class: 'quick-btn', onclick: () => navigate('#/timer') }, h('span', null, '🥊'), 'Minuteur rounds'),
     h('button', { class: 'quick-btn', onclick: () => navigate('#/wellness') }, h('span', null, '🧘'), 'Respiration'),
-    h('button', { class: 'quick-btn', onclick: () => navigate('#/progress') }, h('span', null, '⚖️'), 'Ma pesée')));
+    h('button', { class: 'quick-btn', onclick: () => navigate('#/library') }, h('span', null, '📚'), 'Exercices')));
 
   const tip = TIPS[(weekday(iso) + new Date().getDate()) % TIPS.length];
   root.append(h('section', { class: 'card soft tip' }, h('b', null, '💡 Conseil du jour'), h('p', null, tip)));
@@ -145,8 +157,10 @@ function checkinCard(iso, rerender) {
     h('button', {
       class: 'btn primary',
       onclick: () => {
+        const first = !existing;
         delete d.editing;
         const score = saveCheckin(iso, d);
+        if (first) award(10, SPLIT.life, 'Check-in');
         toast(`Forme : ${score}/100`);
         rerender();
       },

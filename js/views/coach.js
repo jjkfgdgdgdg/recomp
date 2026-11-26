@@ -6,6 +6,7 @@ import { roundConfig } from '../data/muaythai.js';
 import { todayISO, shortDate } from '../engine/dates.js';
 import { openCoach } from './coachOverlay.js';
 import { EXERCISES } from '../data/exercises.js';
+import { award } from '../game/service.js';
 
 const GROUPS = [
   { title: 'Musculation', ids: ['pushup', 'knee_pushup', 'squat', 'lunge', 'bridge', 'curl', 'press', 'plank'] },
@@ -138,6 +139,7 @@ function runTest(test, rerender) {
               EXERCISES.filter((e) => e.base === test.key && !e.weighted).forEach((e) => { delete s.progression.ex[e.id]; });
             });
             toast(`Résultat enregistré : ${value}${t.mode === 'hold' ? ' s' : ''}. Programme recalibré !`, 3500);
+            award(50, { str: 0.5, end: 0.3, men: 0.2 }, 'Test de niveau');
             rerender();
           },
         });

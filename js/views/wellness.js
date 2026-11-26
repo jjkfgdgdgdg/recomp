@@ -5,6 +5,9 @@ import { ROUTINES, routineSession } from '../engine/planner.js';
 import { todayISO, addDays, shortDate, formatDuration } from '../engine/dates.js';
 import { speak, beep, unlockAudio, keepAwake } from '../audio.js';
 import { navigate } from '../router.js';
+import { update } from '../store.js';
+import { award, bump } from '../game/service.js';
+import { SPLIT } from '../game/leveling.js';
 
 const PATTERNS = [
   { id: 'coherence', label: 'Cohérence cardiaque', desc: '5 s inspire, 5 s expire. Calme le stress en 5 minutes (3 fois par jour idéalement).', phases: [['Inspire', 5], ['Expire', 5]] },
@@ -39,7 +42,16 @@ export function renderWellness(root) {
     beep(name === 'Inspire' ? 520 : name === 'Expire' ? 390 : 450, 0.15, 0.12);
     if (getState().settings.voice && totalLeft > minutes * 60 - 25) speak(name, { interrupt: true, rate: 0.9 });
   };
-  const stop = () => {
+  let doneSecs = 0;
+  const logBreath = (complete) => {
+    const secs = Math.round(doneSecs);
+    doneSecs = 0;
+    if (secs < 60) return;
+    update((st) => { st.logs.breath = [...(st.logs.breath || []), { date: todayISO(), secs, pattern: pattern.id }].slice(-300); });
+    if (complete) { bump('breathing'); award(20, SPLIT.life, 'Respiration'); }
+  };
+  const stop = (complete = false) => {
+    if (running) logBreath(complete);
     running = false;
     clearInterval(handle);
     keepAwake(false);
@@ -49,7 +61,7 @@ export function renderWellness(root) {
     timeEl.textContent = '';
   };
   const toggle = () => {
-    if (running) { stop(); return; }
+    if (running) { stop(false); return; }
     unlockAudio();
     keepAwake(true);
     running = true;
@@ -63,12 +75,13 @@ export function renderWellness(root) {
       last = now;
       phaseLeft -= dt;
       totalLeft -= dt;
+      doneSecs += dt;
       timeEl.textContent = `Reste ${formatDuration(totalLeft)}`;
-      if (totalLeft <= 0) { stop(); speak('Bravo. Reviens doucement.', { interrupt: true }); return; }
+      if (totalLeft <= 0) { stop(true); speak('Bravo. Reviens doucement.', { interrupt: true }); return; }
       if (phaseLeft <= 0) setPhase(phaseIdx + 1);
     }, 100);
   };
-  cleanup = stop;
+  cleanup = () => stop(false);
 
   root.append(h('section', { class: 'card breath' },
     h('div', { class: 'card-title' }, '🌬️ Respiration guidée'),

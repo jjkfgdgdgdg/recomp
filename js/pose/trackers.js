@@ -554,9 +554,10 @@ export class BurpeeTracker extends BaseTracker {
 
   update(pts, t) {
     this.begin(t);
-    const sh = mid(pts[LM.lShoulder], pts[LM.rShoulder]);
-    const hp = mid(pts[LM.lHip], pts[LM.rHip]);
-    if (sh.v < 0.5 || hp.v < 0.5) return this.notReady('Recule et mets-toi de profil, tout le corps visible');
+    const s = SIDE[bestSide(pts, ['sh', 'hip'])];
+    const sh = pts[s.sh];
+    const hp = pts[s.hip];
+    if (avgVis(pts, [s.sh, s.hip]) < 0.5) return this.notReady('Recule et mets-toi de profil, tout le corps visible');
     this.ready = true;
     const m = this.ema.next(fromVertical(hp, sh));
     const ev = this.cycle.update(m);

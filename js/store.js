@@ -14,9 +14,11 @@ export function defaultState() {
       water: {}, // date -> ml
       coach: [], // { date, trackerId, exId, reps, partial, holdSec, score, topErrors }
       tests: [], // { date, push, squat, pull, plank }
+      breath: [], // { date, secs, pattern }
     },
     records: {}, // trackerId -> { reps, holdSec, date }
-    settings: { voice: true, sound: true, model: 'lite', voiceCounts: true },
+    settings: { voice: true, sound: true, model: 'lite', voiceCounts: true, persona: 'calm' },
+    game: null, // progression RPG (voir js/game/leveling.js)
     active: null, // séance en cours
   };
 }

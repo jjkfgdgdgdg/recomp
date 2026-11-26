@@ -76,34 +76,43 @@ export function success() {
   setTimeout(() => beep(1320, 0.2, 0.2), 220);
 }
 
-let voice = null;
-function pickVoice() {
-  if (voice || !('speechSynthesis' in window)) return voice;
-  const voices = speechSynthesis.getVoices();
-  voice = voices.find((v) => v.lang === 'fr-FR' && /google|natural|premium|enhanced/i.test(v.name))
-    || voices.find((v) => v.lang === 'fr-FR')
-    || voices.find((v) => v.lang?.startsWith('fr')) || null;
-  return voice;
+let voices = { any: null, male: null };
+function pickVoice(prefer) {
+  if (!('speechSynthesis' in window)) return null;
+  if (!voices.any) {
+    const all = speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().startsWith('fr'));
+    const fr = all.filter((v) => v.lang === 'fr-FR');
+    const list = fr.length ? fr : all;
+    voices.any = list.find((v) => /google|natural|premium|enhanced/i.test(v.name)) || list[0] || null;
+    // Voix masculines courantes selon les systèmes (macOS, Windows, Android, Chrome)
+    voices.male = list.find((v) => /thomas|paul|henri|mathieu|nicolas|daniel|claude|antoine|gilles|male|homme/i.test(v.name)) || null;
+  }
+  return (prefer === 'male' && voices.male) || voices.any;
 }
 if ('speechSynthesis' in window) {
-  speechSynthesis.onvoiceschanged = () => { voice = null; pickVoice(); };
+  speechSynthesis.onvoiceschanged = () => { voices = { any: null, male: null }; pickVoice(); };
 }
 
 let lastSpoken = { text: '', at: 0 };
 /**
- * Fait parler le coach. opts.interrupt coupe la phrase en cours ; opts.minGap évite de répéter trop souvent.
+ * Fait parler le coach.
+ * opts.interrupt coupe la phrase en cours ; opts.queue la met en file d'attente ;
+ * opts.minGap évite de répéter la même phrase trop souvent ; opts.pitch / opts.prefer règlent la voix.
  */
-export function speak(text, { interrupt = false, minGap = 0, rate = 1.08 } = {}) {
+export function speak(text, {
+  interrupt = false, queue = false, minGap = 0, rate = 1.08, pitch = 1, prefer = null,
+} = {}) {
   if (!text || getState().settings.voice === false || !('speechSynthesis' in window)) return;
   const now = performance.now();
   if (minGap && lastSpoken.text === text && now - lastSpoken.at < minGap) return;
-  if (!interrupt && speechSynthesis.speaking && now - lastSpoken.at < 1200) return;
+  if (!interrupt && !queue && speechSynthesis.speaking && now - lastSpoken.at < 1200) return;
   if (interrupt) speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'fr-FR';
-  const v = pickVoice();
+  const v = pickVoice(prefer);
   if (v) u.voice = v;
   u.rate = rate;
+  u.pitch = pitch;
   speechSynthesis.speak(u);
   lastSpoken = { text, at: now };
 }

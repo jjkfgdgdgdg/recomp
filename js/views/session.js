@@ -16,6 +16,9 @@ import { roundConfig } from '../data/muaythai.js';
 import { openCoach } from './coachOverlay.js';
 import { exerciseModal, sessionList, typeBadge } from './common.js';
 import { navigate } from '../router.js';
+import { say } from '../voice.js';
+import { award } from '../game/service.js';
+import { sessionXp, SPLIT } from '../game/leveling.js';
 
 const NO_RPE = new Set(['mobility', 'warmup', 'breath', 'endurance', 'muaythai']);
 const AUTO_BLOCKS = new Set(['Échauffement', 'Retour au calme', 'Routine', 'Mobilité', 'Respiration']);
@@ -65,7 +68,7 @@ export function renderSession(root, { id }) {
       run = { id, session, startedAt: Date.now(), idx: 0, setIdx: 0, results: {}, messages: [] };
       saveRun();
     }
-    speak(`C’est parti pour ${session.title}`, { interrupt: true });
+    say('start', { interrupt: true });
     showItem();
   }
 
@@ -116,7 +119,10 @@ export function renderSession(root, { id }) {
   }
 
   function nextItem(skipped = false) {
-    if (skipped) run.results[run.idx] = { ...(run.results[run.idx] || { sets: [] }), skipped: true };
+    if (skipped) {
+      run.results[run.idx] = { ...(run.results[run.idx] || { sets: [] }), skipped: true };
+      if (!AUTO_BLOCKS.has(items[run.idx]?.block)) say('skip', { interrupt: true });
+    }
     run.idx += 1;
     run.setIdx = 0;
     saveRun();
@@ -346,7 +352,10 @@ export function renderSession(root, { id }) {
     let last = performance.now();
     let prevWhole = Math.ceil(secs);
     const r = ring(1, 220, 14, formatDuration(remaining));
-    if (!short) speak(`Repos, ${Math.round(secs)} secondes`);
+    if (!short) {
+      if (Math.random() < 0.4) say('rest', { interrupt: true });
+      else speak(`Repos, ${Math.round(secs)} secondes`);
+    }
     const go = () => { stopTimers(); then(); };
     root.append(h('section', { class: 'player rest' },
       h('div', { class: 'upper muted small' }, 'Repos'),
@@ -407,16 +416,18 @@ export function renderSession(root, { id }) {
     const totalReps = exercises.reduce((s, x) => s + x.sets.reduce((t, st) => t + (st.reps || 0), 0), 0);
     const volume = exercises.reduce((s, x) => s + x.sets.reduce((t, st) => t + (st.reps || 0) * (st.weight || 0), 0), 0);
     let feeling = 3;
-    speak('Séance terminée ! Bravo, tu as tout donné.', { interrupt: true });
+    say('finish', { interrupt: true });
     const save = () => {
+      const log = {
+        id: `${id}-${run.startedAt}`, date: todayISO(), plannedFor: session.date, routine: id.startsWith('routine-'),
+        title: session.title, type: session.type, durationSec, exercises, totalReps, volume, feeling, messages: run.messages,
+        completedAt: new Date().toISOString(),
+      };
       update((s) => {
-        s.logs.sessions.push({
-          id: `${id}-${run.startedAt}`, date: todayISO(), plannedFor: session.date, routine: id.startsWith('routine-'),
-          title: session.title, type: session.type, durationSec, exercises, totalReps, volume, feeling, messages: run.messages,
-          completedAt: new Date().toISOString(),
-        });
+        s.logs.sessions.push(log);
         s.active = null;
       });
+      award(sessionXp(log), SPLIT[session.type] || SPLIT.strength, log.routine ? 'Routine' : 'Séance terminée');
       toast('Séance enregistrée 🔥');
       navigate('#/today');
     };

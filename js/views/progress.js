@@ -7,6 +7,8 @@ import { TRACKERS } from '../pose/trackers.js';
 import { TYPE_META } from '../engine/planner.js';
 import { streak, latestWeight } from '../services.js';
 import { emptyState } from './common.js';
+import { award } from '../game/service.js';
+import { SPLIT } from '../game/leveling.js';
 
 export function renderProgress(root) {
   const s = getState();
@@ -39,12 +41,14 @@ export function renderProgress(root) {
         class: 'btn primary',
         onclick: () => {
           if (!(w >= 30 && w <= 250)) { toast('Poids invalide'); return; }
+          const firstToday = !getState().logs.weights.some((x) => x.date === today);
           update((st) => {
             const list = st.logs.weights.filter((x) => x.date !== today);
             list.push({ date: today, weight: w, waist: waist || null });
             st.logs.weights = list.sort((a, b) => a.date.localeCompare(b.date));
           });
           toast('Pesée enregistrée ✅');
+          if (firstToday) award(10, SPLIT.life, 'Pesée');
           renderProgress(root);
         },
       }, 'Enregistrer')),

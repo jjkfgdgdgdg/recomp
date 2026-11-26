@@ -119,3 +119,40 @@ Questionnaire en plusieurs étapes, avec barre de progression, modifiable à tou
 - Avertissement : l'app ne remplace pas un médecin ; arrêter en cas de douleur.
 - Exclusion automatique des exercices contre-indiqués selon les douleurs déclarées.
 - Pas de déficit calorique extrême (plancher : métabolisme de base), alerte si IMC hors norme ou âge < 16 ans.
+
+---
+
+## V2 — Mode RPG, boss, coach Hardcore et Académie
+
+### 9. Progression façon jeu de rôle (inspirée des apps de fitness « leveling », mécaniques uniquement)
+- **XP et niveaux** gagnés avec les séances, les séries filmées, les quêtes, les check-ins, l'hydratation, la respiration et les boss.
+- **Rangs E → D → C → B → A → S** selon le niveau. Popup « Niveau supérieur » animée.
+- **5 statistiques** qui montent selon l'activité : Force, Endurance, Agilité, Technique (qualité caméra), Mental (régularité).
+  Radar des stats sur l'écran Héros.
+- **Titres** à débloquer (22) et à équiper sous son nom.
+- **Quêtes quotidiennes adaptatives** : 3 exercices calibrés sur les tests et le niveau (sans exercice contre-indiqué)
+  + séance du jour ou respiration + hydratation. Progression automatique (caméra, séances) ou saisie manuelle.
+  Récompense par quête + coffre bonus. **Quête de pénalité** si celles de la veille sont ratées.
+
+### 10. Combats de boss à la caméra
+- 7 boss **originaux** (Slime de la Flemme, Golem de Fonte, Ogre du Ring, Hydre du Canapé, Spectre du Doute,
+  Titan d'Acier, Dragon des Excuses), débloqués par niveau, dessinés en SVG.
+- Chaque phase = un exercice. **Dégâts = qualité de la rep × combo × Force** ; rep parfaite = chance de critique ;
+  rep ratée = « RATÉ » et combo remis à zéro. Gainage = dégâts par seconde de bon alignement. Shadow = dégâts par coup.
+- Le boss **attaque** régulièrement : il faut enchaîner X reps (ou tenir le gainage / garder la garde) pour esquiver,
+  sinon on perd des PV. PV du joueur liés à l'Endurance.
+- Note finale (S/A/B/C), XP, trophées. Mode sans caméra possible (dégâts réduits, note plafonnée).
+
+### 11. Coach vocal « Hardcore »
+- Personnalité au choix : bienveillante ou **Hardcore** (style sergent instructeur, zéro excuse, voix grave).
+- Répliques **originales** (pas la voix ni les citations d'une personne réelle), utilisées partout :
+  démarrage, reps, mauvaises reps, repos, fin de séance, boss, pénalités, montée de niveau.
+
+### 12. Académie & tutos
+- **Bibliothèque** de ~90 exercices : démo animée (mannequin en boucle, ralenti), muscles (carte), étapes,
+  erreurs fréquentes, respiration, conseils, variantes plus faciles / plus dures, lien vers des vidéos YouTube,
+  essai direct avec la caméra.
+- Les démos sont validées automatiquement par les compteurs de la caméra (tests).
+- **12 guides** : règles de la prise de muscle, séries/reps/repos, poids du corps, nutrition, compléments,
+  récupération, Muay Thai (les 8 armes, condition physique), échauffement/blessures, plateau, mythes, mesures.
+- **Carte musculaire** : séries par muscle sur 7 jours (objectif 10-20) pour repérer les muscles en retard.
