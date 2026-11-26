@@ -1,0 +1,23 @@
+{
+  "name": "recomp",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Coche tes habitudes, gagne des tickets, échange-les contre tes récompenses.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:artifact": "npm run build && node scripts/build-artifact.mjs",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "preact": "11.2.0"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "8.3.8",
+    "vitest": "5.1.0"
+  }
+}
