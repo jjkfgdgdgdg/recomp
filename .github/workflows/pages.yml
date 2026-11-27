@@ -1,0 +1,52 @@
+# Met le site Recomp en ligne sur GitHub Pages (gratuit, HTTPS) à chaque modification de main.
+# Protection : le site n'est publié que si tous les tests passent, et seuls les fichiers de l'app
+# (dossier www/) sont publiés — pas le code des applis, ni les tests.
+#
+# À faire une seule fois : Settings → Pages → Build and deployment → Source : « GitHub Actions ».
+name: Mettre le site en ligne
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tests (le site n'est publié que s'ils passent)
+        run: npm test
+      - name: Préparer les fichiers du site
+        run: node tools/build-www.mjs && touch www/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: www
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

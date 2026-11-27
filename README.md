@@ -60,12 +60,12 @@ si ton dos est droit, si ta garde est haute…
 Il suffit d'héberger le site en **HTTPS** (obligatoire pour la caméra et l'installation).
 Ensuite, **la même adresse marche sur téléphone, tablette et PC**.
 
-### Option A — GitHub Pages (le plus simple, dépôt public)
-1. Fusionne la pull request dans `main`.
-2. Dépôt → *Settings* → *General* → tout en bas *Change visibility* → **Public**
-   (le code ne contient aucune donnée perso ; tes données restent sur tes appareils).
-3. *Settings* → *Pages* → *Build and deployment* → *Deploy from a branch* → `main` / `(root)` → *Save*.
-4. 1-2 minutes plus tard : **`https://jjkfgdgdgdg.github.io/recomp/`**
+### Option A — GitHub Pages (recommandé, le dépôt est public)
+1. Dépôt → *Settings* → *Pages* → *Build and deployment* → **Source : GitHub Actions** (une seule fois).
+2. C'est tout : à chaque modification de `main`, le workflow **« Mettre le site en ligne »** lance les tests
+   puis publie le site (seulement s'ils passent). Pour le lancer tout de suite : onglet *Actions* →
+   *Mettre le site en ligne* → *Run workflow*.
+3. Le site est sur **`https://jjkfgdgdgdg.github.io/recomp/`** (HTTPS, donc caméra et installation OK).
 
 ### Option B — Cloudflare Pages ou Netlify (gratuit, le dépôt peut rester privé)
 1. Crée un compte gratuit sur [pages.cloudflare.com](https://pages.cloudflare.com) ou [netlify.com](https://www.netlify.com) (connexion avec GitHub).

@@ -79,7 +79,7 @@ test('appli Android : trafic non chiffré interdit, pas de clé dans le build', 
 
 test('workflows GitHub : droits minimaux et secrets jamais exposés aux pull requests', () => {
   const dir = join(ROOT, '.github/workflows');
-  ['tests.yml', 'build-apps.yml'].forEach((f) => {
+  ['tests.yml', 'build-apps.yml', 'pages.yml'].forEach((f) => {
     const p = join(dir, f);
     if (!existsSync(p)) return;
     const y = readFileSync(p, 'utf8');
