@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Protection : seul le code de l'app peut s'exécuter (aucun script externe ni injecté) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' data: blob:; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; manifest-src 'self'">
+  <meta name="referrer" content="no-referrer">
   <title>Recomp · Coach sport & bien-être</title>
   <meta name="description" content="Coach sport et bien-être 100 % gratuit : programme musculation + Muay Thai automatique, squelette caméra qui compte tes reps et corrige ta posture.">
   <meta name="theme-color" content="#0d0f14" media="(prefers-color-scheme: dark)">
@@ -22,7 +25,7 @@
     <div class="boot">Chargement…</div>
   </main>
   <nav id="tabbar" class="tabbar" aria-label="Navigation principale"></nav>
-  <noscript><p style="padding:16px">Recomp a besoin de JavaScript pour fonctionner.</p></noscript>
+  <noscript><p>Recomp a besoin de JavaScript pour fonctionner.</p></noscript>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

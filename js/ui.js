@@ -6,7 +6,11 @@ export function h(tag, props, ...children) {
     for (const [k, v] of Object.entries(props)) {
       if (v === null || v === undefined || v === false) continue;
       if (k === 'class') el.className = v;
-      else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+      else if (k === 'style' && typeof v === 'object') {
+        Object.entries(v).forEach(([prop, val]) => {
+          if (prop.startsWith('--')) el.style.setProperty(prop, val); else el.style[prop] = val;
+        });
+      }
       else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
       else if (k === 'html') el.innerHTML = v; // uniquement pour du contenu statique interne
       else if (k in el && k !== 'list' && typeof v !== 'string') el[k] = v;
@@ -22,6 +26,11 @@ function append(el, children) {
     if (c === null || c === undefined || c === false) continue;
     el.append(c instanceof Node ? c : document.createTextNode(String(c)));
   }
+}
+
+// Échappe le texte avant de l'insérer dans du HTML/SVG construit à la main (protection contre l'injection)
+export function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 export function clear(el) {

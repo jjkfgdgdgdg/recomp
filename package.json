@@ -1,12 +1,111 @@
 {
   "name": "recomp",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "private": true,
   "description": "Application de sport et bien-être 100 % gratuite avec coach caméra (squelette) — musculation, Muay Thai, mobilité.",
   "type": "module",
   "scripts": {
     "start": "node tools/serve.mjs",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "www": "node tools/build-www.mjs",
+    "desktop": "node tools/build-www.mjs && electron .",
+    "dist:win": "node tools/build-www.mjs && electron-builder --win --publish never",
+    "dist:mac": "node tools/build-www.mjs && electron-builder --mac --publish never",
+    "dist:linux": "node tools/build-www.mjs && electron-builder --linux --publish never",
+    "android:sync": "node tools/build-www.mjs && cap sync android",
+    "android:apk": "node tools/build-www.mjs && cap sync android && cd android && ./gradlew assembleRelease"
   },
-  "license": "MIT"
+  "license": "UNLICENSED",
+  "main": "desktop/main.cjs",
+  "author": "Recomp",
+  "homepage": "https://github.com/jjkfgdgdgdg/recomp",
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2",
+    "electron": "45.3.1",
+    "electron-builder": "26.18.1"
+  },
+  "dependencies": {
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor-community/text-to-speech": "8.0.2",
+    "@capacitor/android": "8.6.2",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/local-notifications": "8.3.1",
+    "@capacitor/share": "8.0.3"
+  },
+  "build": {
+    "appId": "fr.recomp.app",
+    "productName": "Recomp",
+    "copyright": "Recomp — gratuit",
+    "directories": {
+      "output": "dist-desktop",
+      "buildResources": "desktop/build"
+    },
+    "files": [
+      "desktop/main.cjs",
+      "www/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "artifactName": "Recomp-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "desktop/build/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Recomp",
+      "artifactName": "Recomp-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Recomp-Portable-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "category": "public.app-category.healthcare-fitness",
+      "icon": "desktop/build/icon.png",
+      "extendInfo": {
+        "NSCameraUsageDescription": "Recomp utilise la caméra pour dessiner ton squelette et compter tes répétitions. La vidéo reste sur ton ordinateur."
+      }
+    },
+    "dmg": {
+      "artifactName": "Recomp-${version}-mac.${ext}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Sports",
+      "icon": "desktop/build/icon.png",
+      "artifactName": "Recomp-${version}-linux.${ext}"
+    }
+  }
 }

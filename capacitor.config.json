@@ -1,0 +1,17 @@
+{
+  "appId": "fr.recomp.app",
+  "appName": "Recomp",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0d0f14"
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "iconColor": "#FF5A36"
+    }
+  }
+}

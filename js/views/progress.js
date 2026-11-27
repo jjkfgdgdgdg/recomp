@@ -1,5 +1,5 @@
 // Écran « Progrès » : poids, séances, records, tests, historique.
-import { h, clear, numInput, toast, fmt, modal, confirmBox } from '../ui.js';
+import { h, clear, numInput, toast, fmt, modal, confirmBox, esc } from '../ui.js';
 import { getState, update } from '../store.js';
 import { todayISO, shortDate, daysBetween, formatDuration } from '../engine/dates.js';
 import { EX } from '../data/exercises.js';
@@ -131,7 +131,8 @@ function weightChart(weights, target) {
   if (weights.length < 2) {
     return h('p', { class: 'muted small' }, weights.length ? `Première pesée : ${weights[0].weight} kg. Ajoute des pesées pour voir ta courbe.` : 'Aucune pesée.');
   }
-  const pts = weights.slice(-60);
+  const pts = weights.filter((p) => /^\d{4}-\d{2}-\d{2}$/.test(p.date) && Number.isFinite(Number(p.weight))).slice(-60);
+  if (pts.length < 2) return h('p', { class: 'muted small' }, 'Ajoute des pesées pour voir ta courbe.');
   const vals = pts.map((p) => p.weight);
   if (target) vals.push(target);
   const min = Math.floor(Math.min(...vals) - 1);
@@ -154,9 +155,9 @@ function weightChart(weights, target) {
     ${target ? `<line x1="${P}" y1="${y(target)}" x2="${W - 8}" y2="${y(target)}" class="target"/><text x="${W - 60}" y="${y(target) - 4}" class="axis">objectif</text>` : ''}
     <path d="${path(avg, 'v')}" class="avg"/>
     <path d="${path(pts, 'weight')}" class="line"/>
-    ${pts.map((p) => `<circle cx="${x(p.date).toFixed(1)}" cy="${y(p.weight).toFixed(1)}" r="3" class="dot"><title>${shortDate(p.date)} : ${p.weight} kg</title></circle>`).join('')}
-    <text x="${P}" y="${H - 4}" class="axis">${shortDate(t0)}</text>
-    <text x="${W - 40}" y="${H - 4}" class="axis">${shortDate(pts[pts.length - 1].date)}</text>
+    ${pts.map((p) => `<circle cx="${x(p.date).toFixed(1)}" cy="${y(p.weight).toFixed(1)}" r="3" class="dot"><title>${esc(shortDate(p.date))} : ${esc(Number(p.weight))} kg</title></circle>`).join('')}
+    <text x="${P}" y="${H - 4}" class="axis">${esc(shortDate(t0))}</text>
+    <text x="${W - 40}" y="${H - 4}" class="axis">${esc(shortDate(pts[pts.length - 1].date))}</text>
   </svg>`;
   const wrap = h('div', { class: 'chart-wrap' });
   wrap.innerHTML = svg;

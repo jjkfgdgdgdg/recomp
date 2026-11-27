@@ -6,6 +6,10 @@ import { getState, update, subscribe } from './store.js';
 import { todayISO, weekday, addDays } from './engine/dates.js';
 import { questStatus } from './game/quests.js';
 import { appUrl } from './install.js';
+import { isCapacitor } from './platform.js';
+import {
+  saveFile, nativeRequestNotifications, nativeScheduleReminders, nativeCancelReminders,
+} from './native.js';
 
 const BYDAY = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
 
@@ -75,22 +79,31 @@ export function googleCalendarUrl(state, session, url = 'https://recomp.app/') {
 export function downloadIcs() {
   const s = getState();
   const text = buildIcs(s, reminderSettings(), new Date(), appUrl());
-  const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'recomp-rappels.ics';
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  return saveFile('recomp-rappels.ics', text, 'text/calendar;charset=utf-8');
 }
 
 // ---------------------------------------------------------------- Notifications
 export function notificationsSupported() {
-  return 'Notification' in window && 'serviceWorker' in navigator;
+  return isCapacitor || ('Notification' in window && 'serviceWorker' in navigator);
+}
+
+// Appli Android : vrais rappels programmés dans le téléphone (même appli fermée)
+async function syncNative() {
+  if (!isCapacitor) return;
+  const r = reminderSettings();
+  const s = getState();
+  if (r.notify) await nativeScheduleReminders({ days: trainingDays(s), session: r.session, quests: r.quests, name: s.profile?.name || '' }).catch(() => {});
+  else await nativeCancelReminders().catch(() => {});
 }
 
 export async function enableNotifications() {
+  if (isCapacitor) {
+    const res = await nativeRequestNotifications();
+    if (res !== 'granted') return res;
+    update((s) => { s.settings.reminders = { ...reminderSettings(), notify: true }; });
+    await syncNative();
+    return 'granted';
+  }
   if (!notificationsSupported()) return 'unsupported';
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') return perm;
@@ -102,6 +115,7 @@ export async function enableNotifications() {
 
 export function disableNotifications() {
   update((s) => { s.settings.reminders = { ...reminderSettings(), notify: false }; });
+  syncNative();
   mirrorForServiceWorker();
 }
 
@@ -117,6 +131,10 @@ async function registerPeriodicSync() {
 }
 
 export async function showNotification(title, body, tag) {
+  if (isCapacitor) {
+    const ln = window.Capacitor?.Plugins?.LocalNotifications;
+    if (ln) { await ln.schedule({ notifications: [{ id: 999, title, body, schedule: { at: new Date(Date.now() + 1500) } }] }).catch(() => {}); return true; }
+  }
   try {
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification(title, { body, tag, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', data: { url: appUrl() } });
@@ -160,7 +178,18 @@ let loop = null;
 /** Vérifie chaque minute (quand l'app est ouverte) s'il faut envoyer un rappel. */
 export function startReminderLoop() {
   let mirrorTimer = null;
-  subscribe(() => { clearTimeout(mirrorTimer); mirrorTimer = setTimeout(mirrorForServiceWorker, 1500); });
+  let nativeKey = '';
+  subscribe(() => {
+    clearTimeout(mirrorTimer);
+    mirrorTimer = setTimeout(() => {
+      mirrorForServiceWorker();
+      // reprogramme les rappels Android si les jours ou les heures ont changé
+      const r = reminderSettings();
+      const key = JSON.stringify([r.notify, r.session, r.quests, trainingDays()]);
+      if (isCapacitor && key !== nativeKey) { nativeKey = key; syncNative(); }
+    }, 1500);
+  });
+  if (isCapacitor) return; // sur Android, les rappels sont programmés dans le système
   mirrorForServiceWorker();
   const check = () => {
     const s = getState();

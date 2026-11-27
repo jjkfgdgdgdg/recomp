@@ -1,3 +1,15 @@
 node_modules/
 .DS_Store
 *.log
+www/
+dist-desktop/
+# Secrets : ne jamais publier de clés ou de mots de passe
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+.env
+.env.*
+android/key.properties
+android/local.properties

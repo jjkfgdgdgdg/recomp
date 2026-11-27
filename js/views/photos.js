@@ -4,6 +4,7 @@ import { getState, update } from '../store.js';
 import { addPhoto, listPhotos, deletePhoto, clearPhotos, photoUrl } from '../photos.js';
 import { todayISO, shortDate, daysBetween } from '../engine/dates.js';
 import { award } from '../game/service.js';
+import { saveFile } from '../native.js';
 import { SPLIT } from '../game/leveling.js';
 
 const POSES = [{ id: 'face', label: 'Face' }, { id: 'profil', label: 'Profil' }, { id: 'dos', label: 'Dos' }];
@@ -81,7 +82,7 @@ function viewModal(p, redraw) {
   const m = modal(h('div', { class: 'stack' },
     h('img', { class: 'photo-full', src: url, alt: `Photo ${p.pose}` }),
     h('div', { class: 'row gap wrap' },
-      h('a', { class: 'btn ghost small', href: url, download: `recomp-${p.date}-${p.pose}.jpg` }, 'Télécharger'),
+      h('button', { class: 'btn ghost small', onclick: () => saveFile(`recomp-${p.date}-${p.pose}.jpg`, p.blob, 'image/jpeg') }, 'Télécharger'),
       h('button', {
         class: 'btn danger small',
         onclick: async () => { await deletePhoto(p.id); m.close(); toast('Photo supprimée'); redraw(); },

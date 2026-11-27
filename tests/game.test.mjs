@@ -202,8 +202,8 @@ test('boss de la semaine : stable sur la semaine, change d’une semaine à l’
 });
 
 test('défis : création, scores, fusion et lien', () => {
-  let ch = newChallenge('push60', 'Lucas', '2026-11-26', () => 0.5);
-  ch = addScore(ch, { name: 'Lucas', value: 32, cam: true, date: '2026-11-26' });
+  let ch = newChallenge('push60', 'Sam', '2026-11-26', () => 0.5);
+  ch = addScore(ch, { name: 'Sam', value: 32, cam: true, date: '2026-11-26' });
   const code = encodeChallenge(ch);
   assert.match(code, /^[A-Za-z0-9_-]+\.[a-z0-9]+$/);
   let friend = decodeChallenge(code);
@@ -211,7 +211,7 @@ test('défis : création, scores, fusion et lien', () => {
   friend = addScore(friend, { name: 'Inès', value: 30, cam: true, date: '2026-11-28' }); // pire score ignoré
   const merged = mergeChallenges(ch, decodeChallenge(encodeChallenge(friend)));
   const r = ranking(merged);
-  assert.deepEqual(r.map((x) => [x.name, x.value]), [['Inès', 41], ['Lucas', 32]]);
+  assert.deepEqual(r.map((x) => [x.name, x.value]), [['Inès', 41], ['Sam', 32]]);
   // Un lien bricolé est refusé
   const [data, sum] = code.split('.');
   assert.throws(() => decodeChallenge(`${data}x.${sum}`));

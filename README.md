@@ -73,6 +73,47 @@ Ensuite, **la même adresse marche sur téléphone, tablette et PC**.
 3. Commande de build : **aucune** · Dossier publié : **`/`** (racine). Les fichiers `netlify.toml` et `_headers` sont déjà prêts.
 4. Tu obtiens une adresse en `https://…pages.dev` ou `https://…netlify.app`. Chaque fusion dans `main` met l'app à jour.
 
+## Applications PC et téléphone (fichiers à installer)
+
+En plus du site web, Recomp existe en **vraies applications**, construites automatiquement et gratuitement par GitHub Actions :
+
+| Appareil | Fichier | Particularités |
+| --- | --- | --- |
+| **Windows** | `Recomp-Setup-x.y.z.exe` (installation) ou `Recomp-Portable-x.y.z.exe` | Fenêtre dédiée, raccourci bureau / menu Démarrer, webcam |
+| **Android** | `Recomp-x.y.z-android.apk` | Voix du coach native, **rappels programmés même appli fermée**, écran toujours allumé en séance |
+| **Mac** | `Recomp-x.y.z-mac.dmg` | Intel et Apple Silicon |
+| **Linux** | `Recomp-x.y.z-linux.AppImage` | — |
+| **iPhone / iPad** | — | Apple interdit l'installation hors App Store sans compte payant (99 $/an) : utilise l'app web ajoutée à l'écran d'accueil (Safari → Partager → « Sur l'écran d'accueil »), elle fonctionne hors connexion |
+
+**Publier une nouvelle version** (une fois la PR fusionnée) : onglet **Actions** → **Construire les applis** → **Run workflow**
+→ indique un numéro (ex. `3.1.0`). 15 à 25 minutes plus tard, les fichiers sont dans l'onglet **Releases**
+(avec `SHA256SUMS.txt` pour vérifier les téléchargements). Dans l'app : *Installer* → *Ouvrir la page des téléchargements*.
+
+**Premier lancement** (les applis ne sont pas signées par un éditeur payant, c'est normal) :
+- Windows : « Windows a protégé votre ordinateur » → *Informations complémentaires* → *Exécuter quand même*.
+- Android : autorise ton navigateur à « installer des applis inconnues ».
+- Mac : clic droit sur Recomp → *Ouvrir*.
+
+**Clé de signature Android (recommandé)** : pour que chaque mise à jour s'installe par-dessus l'ancienne sans perdre
+tes données, ajoute ta clé privée dans *Settings → Secrets and variables → Actions* (`ANDROID_KEYSTORE_BASE64`,
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`). **Ne mets jamais cette clé dans le dépôt.**
+Sans clé, l'APK est signé avec une clé de test (une mise à jour demandera alors de réinstaller).
+
+Construire soi-même : `npm ci` puis `npm run desktop` (lancer l'appli PC), `npm run dist:win` / `dist:mac` / `dist:linux`,
+ou `npm run android:apk` (nécessite le SDK Android).
+
+## Protections
+
+Le dépôt est public : voir [`SECURITY.md`](SECURITY.md) pour le détail et pour signaler une faille. En bref :
+aucune donnée envoyée, Content Security Policy stricte, données importées et liens de défi nettoyés,
+applis PC/Android verrouillées, aucun secret dans le code (test automatique), workflows aux droits minimaux,
+mises à jour de sécurité Dependabot, empreintes SHA-256 des fichiers publiés.
+Code source visible mais **tous droits réservés** (voir [`LICENSE`](LICENSE)).
+
+À activer une fois dans GitHub (*Settings*) pour renforcer encore :
+- *Code security* → **Secret scanning** + **Push protection**, **Dependabot alerts**, **Private vulnerability reporting** ;
+- *Branches* → règle pour `main` : **Require a pull request** + **Require status checks** (« test »).
+
 ## Installer l'app sur tes appareils
 
 Ouvre l'adresse de l'app, puis :
@@ -127,6 +168,7 @@ js/engine/     → nutrition, planification, progression, forme (fonctions pures
 js/game/       → XP/niveaux/stats/titres, quêtes, boss, monstres SVG
 js/pose/       → détection (MediaPipe), géométrie, compteurs de reps, dessin du squelette
 js/views/      → écrans
+desktop/       → application PC (Electron) ; android/ → application Android (Capacitor)
 js/data/       → exercices (~90), technique, guides, muscles, combinaisons de Muay Thai, idées de repas
 js/voice.js    → personnalités du coach (bienveillant / Hardcore)
 vendor/        → MediaPipe Tasks Vision 0.10.35 + modèles Pose Landmarker (Apache 2.0)

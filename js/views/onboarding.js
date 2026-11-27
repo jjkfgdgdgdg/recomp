@@ -50,7 +50,7 @@ export function renderOnboarding(root, params = {}) {
     {
       title: 'Faisons connaissance',
       body: () => [
-        field('Ton prénom', h('input', { class: 'input', value: draft.name, placeholder: 'Ex. Lucas', maxlength: 30, oninput: (e) => { draft.name = e.target.value.trim(); } })),
+        field('Ton prénom', h('input', { class: 'input', value: draft.name, placeholder: 'Ex. Alex', maxlength: 30, oninput: (e) => { draft.name = e.target.value.trim(); } })),
         field('Sexe (pour les calculs de métabolisme)', chips([{ id: 'male', label: 'Homme' }, { id: 'female', label: 'Femme' }], draft.sex, { multi: false, onChange: (v) => { draft.sex = v; } })),
         field('Âge', numInput(draft.age, { min: 12, max: 90, placeholder: 'ans', onInput: (v) => { draft.age = v; } })),
       ],
