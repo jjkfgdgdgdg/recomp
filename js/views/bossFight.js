@@ -1,8 +1,9 @@
 // Combat de boss : chaque rep bien faite (validée par la caméra) inflige des dégâts.
 // Qualité de la rep × combo × force = dégâts. Le boss attaque régulièrement : enchaîne des reps pour esquiver.
-import { h, icon, clear, toast } from '../ui.js';
+import { h, add, icon, clear, toast } from '../ui.js';
 import { drawSkeleton } from '../pose/draw.js';
-import { TRACKERS } from '../pose/trackers.js';
+import { TRACKERS, UPPER_ONLY } from '../pose/trackers.js';
+import { legsIssue } from '../pose/geometry.js';
 import { createStage, cameraErrorMessage } from '../pose/stage.js';
 import {
   speak, beep, bell, success, unlockAudio, keepAwake, stopSpeaking, vibrate, countdownBeep,
@@ -68,12 +69,17 @@ export function openBossFight(bossId, { manual = false, onDone, event = null } =
   const feedbackEl = h('div', { class: 'hud-feedback empty' }, '');
   const flash = h('div', { class: 'bf-flash' });
 
+  let legsSince = null;
   const stage = manual ? null : createStage({
     onPose: (lm, pts, now) => {
       if (!f.tracker) { drawSkeleton(stage.ctx, lm, {}); return; }
       const st = f.tracker.update(pts, now);
       drawSkeleton(stage.ctx, lm, st.joints);
-      if (f.state === 'fight') { onStatus(st, now); setFeedback(st.feedback); } else setFeedback(st.ready ? { text: 'Position OK ✅', level: 'good' } : st.feedback);
+      // Conseil si les jambes sortent de l'image (après ~0,8 s, pour ne pas clignoter)
+      const issue = UPPER_ONLY.has(boss.phases[f.phase]?.tracker) ? null : legsIssue(lm);
+      if (!issue) legsSince = null; else if (legsSince === null) legsSince = now;
+      const legsFb = issue && now - legsSince > 800 ? { text: issue, level: 'warn' } : null;
+      if (f.state === 'fight') { onStatus(st, now); setFeedback(st.feedback || legsFb); } else setFeedback(st.ready ? { text: 'Position OK ✅', level: 'good' } : legsFb || st.feedback);
     },
     onNoPose: () => { if (f.state === 'fight' || f.state === 'break') setFeedback({ text: 'Je ne te vois pas : recule !', level: 'warn' }); },
   });
@@ -360,7 +366,7 @@ export function openBossFight(bossId, { manual = false, onDone, event = null } =
 
   function floatText(text, cls) {
     const el = h('span', { class: `bf-dmg ${cls}`, style: { left: `${30 + Math.random() * 40}%`, top: `${18 + Math.random() * 14}%` } }, text);
-    dmgLayer.append(el);
+    add(dmgLayer, el);
     setTimeout(() => el.remove(), 1100);
   }
 
@@ -416,7 +422,7 @@ export function openBossFight(bossId, { manual = false, onDone, event = null } =
       h('div', { class: 'row gap' },
         h('button', { class: 'btn ghost light', onclick: () => { close(); openBossFight(bossId, { manual, onDone, event }); } }, 'Rejouer'),
         h('button', { class: 'btn primary', onclick: () => close() }, 'Retour à l’arène')));
-    root.append(card);
+    add(root, card);
   }
 
   function saveResult(won, g, timeSec, abandoned) {

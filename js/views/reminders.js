@@ -1,5 +1,5 @@
 // Écran « Rappels » : agenda (le plus fiable) + notifications de l'app.
-import { h, clear, toast } from '../ui.js';
+import { h, add, clear, toast } from '../ui.js';
 import { update } from '../store.js';
 import {
   reminderSettings, downloadIcs, googleCalendarUrl, enableNotifications, disableNotifications, notificationsSupported, showNotification, trainingDays,
@@ -17,7 +17,7 @@ export function renderReminders(root) {
     const set = (k, v) => update((s) => { s.settings.reminders = { ...reminderSettings(), [k]: v }; });
     const gUrl = googleCalendarUrl(getState(), r.session, appUrl());
     clear(root);
-    root.append(
+    add(root,
       h('section', { class: 'page-head' },
         h('button', { class: 'link small', onclick: () => history.back() }, '← Retour'),
         h('h1', null, '⏰ Rappels'),

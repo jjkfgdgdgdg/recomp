@@ -1,5 +1,5 @@
 // Questionnaire d'accueil : on pose beaucoup de questions pour personnaliser le programme.
-import { h, clear, chips, field, numInput, toast } from '../ui.js';
+import { h, add, clear, chips, field, numInput, toast } from '../ui.js';
 import { getState, update } from '../store.js';
 import { GOALS } from '../engine/planner.js';
 import { ACTIVITY, bmi } from '../engine/nutrition.js';
@@ -84,7 +84,7 @@ export function renderOnboarding(root, params = {}) {
           const opts = GOALS.filter((g) => draft.goals.includes(g.id));
           if (!opts.length) return;
           if (!draft.goals.includes(draft.primaryGoal)) draft.primaryGoal = opts[0].id;
-          prim.append(field('Objectif principal', chips(opts, draft.primaryGoal, { multi: false, onChange: (v) => { draft.primaryGoal = v; } })));
+          add(prim, field('Objectif principal', chips(opts, draft.primaryGoal, { multi: false, onChange: (v) => { draft.primaryGoal = v; } })));
         };
         renderPrim();
         return [
@@ -181,7 +181,7 @@ export function renderOnboarding(root, params = {}) {
     const st = steps[step];
     const progress = Math.round((step / (steps.length - 1)) * 100);
     const error = h('div', { class: 'form-error', role: 'alert' });
-    root.append(h('section', { class: 'onboarding' },
+    add(root, h('section', { class: 'onboarding' },
       h('div', { class: 'progress-top' }, h('div', { class: 'progress-top-fill', style: { width: `${progress}%` } })),
       h('div', { class: 'muted small' }, `Étape ${step + 1} / ${steps.length}`),
       h('h1', null, st.title),

@@ -1,5 +1,5 @@
 // Page « Installer Recomp » : installation sur téléphone / tablette / PC, envoi vers un autre appareil, transfert des données.
-import { h, clear, toast, icon } from '../ui.js';
+import { h, add, clear, toast, icon } from '../ui.js';
 import { update } from '../store.js';
 import {
   installState, promptInstall, onInstallChange, appUrl,
@@ -55,19 +55,19 @@ export function renderInstall(root) {
     st = installState();
     clear(status);
     if (isNativeApp) {
-      status.append(h('div', { class: 'install-ok' }, '✅'), h('div', null, h('b', null, `Tu utilises l\u2019application Recomp ${isElectron ? 'pour PC' : 'Android'}.`), h('p', { class: 'small muted' }, 'Tout fonctionne hors connexion. Pour l\u2019avoir aussi sur un autre appareil, télécharge la version qui lui correspond ci-dessous.')));
+      add(status, h('div', { class: 'install-ok' }, '✅'), h('div', null, h('b', null, `Tu utilises l\u2019application Recomp ${isElectron ? 'pour PC' : 'Android'}.`), h('p', { class: 'small muted' }, 'Tout fonctionne hors connexion. Pour l\u2019avoir aussi sur un autre appareil, télécharge la version qui lui correspond ci-dessous.')));
       return;
     }
     if (st.installed) {
-      status.append(h('div', { class: 'install-ok' }, '✅'), h('div', null, h('b', null, 'Recomp est installée sur cet appareil.'), h('p', { class: 'small muted' }, 'Elle fonctionne aussi hors connexion. Pour l’avoir sur un autre appareil, envoie-toi le lien ci-dessous.')));
+      add(status, h('div', { class: 'install-ok' }, '✅'), h('div', null, h('b', null, 'Recomp est installée sur cet appareil.'), h('p', { class: 'small muted' }, 'Elle fonctionne aussi hors connexion. Pour l’avoir sur un autre appareil, envoie-toi le lien ci-dessous.')));
       return;
     }
     if (!st.secure) {
-      status.append(h('div', { class: 'alert' }, '⚠️ Cette page n’est pas en HTTPS : l’installation et la caméra ne marcheront pas. Utilise l’adresse en https:// (ou localhost sur PC).'));
+      add(status, h('div', { class: 'alert' }, '⚠️ Cette page n’est pas en HTTPS : l’installation et la caméra ne marcheront pas. Utilise l’adresse en https:// (ou localhost sur PC).'));
       return;
     }
     if (st.canPrompt) {
-      status.append(
+      add(status,
         h('div', null, h('b', null, 'Installe Recomp en un clic'), h('p', { class: 'small muted' }, 'Icône sur ton écran d’accueil, plein écran, fonctionne hors connexion.')),
         h('button', {
           class: 'btn primary big',
@@ -81,7 +81,7 @@ export function renderInstall(root) {
     }
     const g = GUIDES.find((x) => x.match.includes(st.platform)) || GUIDES[2];
     const firefox = st.browser === 'firefox' && !['iphone', 'ipad'].includes(st.platform);
-    status.append(
+    add(status,
       h('div', null, h('b', null, `${g.emoji} Sur ton appareil (${g.title})`),
         firefox ? h('p', { class: 'small' }, 'Firefox ne sait pas installer les applis web : ouvre ce lien dans Chrome ou Edge (tu peux aussi utiliser Recomp directement dans Firefox, sans l’installer).') : null,
         h('ol', { class: 'small install-steps' }, g.steps.map((s) => h('li', null, s)))));
@@ -101,7 +101,7 @@ export function renderInstall(root) {
   };
 
   clear(root);
-  root.append(
+  add(root,
     h('section', { class: 'page-head' },
       h('button', { class: 'link small', onclick: () => history.back() }, '← Retour'),
       h('h1', null, '📲 Installer Recomp'),

@@ -1,5 +1,5 @@
 // Écran « Programme » : semaine type, détail des séances, nutrition et logique du programme.
-import { h, clear, modal, fmt, bar } from '../ui.js';
+import { h, add, clear, modal, fmt, bar } from '../ui.js';
 import { getState, update } from '../store.js';
 import { DAY_NAMES, todayISO, addDays, weekday, shortDate } from '../engine/dates.js';
 import { TYPE_META, isDeload, weekIndex } from '../engine/planner.js';
@@ -15,7 +15,7 @@ export function renderPlan(root) {
   const monday = addDays(today, -weekday(today));
   const wIdx = weekIndex(s.profile, today);
   clear(root);
-  root.append(h('section', { class: 'page-head' },
+  add(root, h('section', { class: 'page-head' },
     h('div', { class: 'row between' }, h('h1', null, 'Mon programme'), h('button', { class: 'btn ghost small', onclick: () => navigate('#/editor') }, '✏️ Modifier')),
     h('p', { class: 'muted' }, `Semaine ${wIdx}${isDeload(s.profile, today) ? ' · 🔋 décharge' : ''} · ${s.profile.days.length} séances de ${s.profile.sessionMinutes} min`)));
 
@@ -26,7 +26,7 @@ export function renderPlan(root) {
     const day = s.plan.week[i];
     const done = sessionLogFor(iso);
     const meta = TYPE_META[day.type];
-    list.append(h('button', {
+    add(list, h('button', {
       class: `day-row t-${day.type}${iso === today ? ' today' : ''}`,
       onclick: () => (day.type === 'rest' ? null : showSession(iso)),
       disabled: day.type === 'rest',
@@ -35,10 +35,10 @@ export function renderPlan(root) {
     h('div', { class: 'day-main' }, h('span', { class: 'day-emoji' }, meta.emoji), h('span', null, day.title)),
     h('div', { class: 'day-state' }, done ? '✅' : iso === today && day.type !== 'rest' ? 'Auj.' : '')));
   }
-  root.append(list);
+  add(root, list);
 
   // ---- Pourquoi
-  root.append(h('section', { class: 'card soft' },
+  add(root, h('section', { class: 'card soft' },
     h('div', { class: 'card-title' }, '🧠 Pourquoi ce programme ?'),
     h('ul', { class: 'bullets small' }, (s.plan.reasons || []).map((r) => h('li', null, r))),
     h('div', { class: 'row gap wrap' },
@@ -55,7 +55,7 @@ export function renderPlan(root) {
   const eta = goalEta(p);
   const meals = mealIdeas(p.diet, p.meals, weekday(today) + new Date().getDate());
   const macroTotal = n.protein * 4 + n.carbs * 4 + n.fat * 9;
-  root.append(h('section', { class: 'card' },
+  add(root, h('section', { class: 'card' },
     h('div', { class: 'card-title' }, '🍽️ Nutrition'),
     h('p', { class: 'small muted' }, n.note),
     h('div', { class: 'stats3' },

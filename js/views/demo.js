@@ -1,5 +1,5 @@
 // Lecteur de démonstration animée : un mannequin montre le mouvement parfait, en boucle.
-import { h, icon, clear } from '../ui.js';
+import { h, add, icon, clear } from '../ui.js';
 import { DEMOS } from '../pose/demos.js';
 import { angle } from '../pose/geometry.js';
 
@@ -89,7 +89,7 @@ export function demoPlayer(demoId, { size = 300, compact = false } = {}) {
   function toggle() {
     playing = !playing;
     if (playing) t0 = performance.now();
-    clear(btn).append(icon(playing ? 'pause' : 'play', 18));
+    add(clear(btn), icon(playing ? 'pause' : 'play', 18));
   }
   function frame() {
     if (!el.isConnected && el.dataset.started) return;

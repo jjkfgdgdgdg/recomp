@@ -18,7 +18,7 @@ export function drawSkeleton(ctx, landmarks, joints = {}, opts = {}) {
   ctx.clearRect(0, 0, w, h);
   if (!landmarks) return;
   const lw = Math.max(3, Math.round(Math.min(w, h) / 110));
-  const minVis = opts.minVis ?? 0.45;
+  const minVis = opts.minVis ?? 0.3;
   ctx.lineCap = 'round';
   // Contour sombre pour la lisibilité sur n'importe quel fond
   for (const pass of ['shadow', 'color']) {

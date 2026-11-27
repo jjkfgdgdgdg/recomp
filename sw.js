@@ -1,6 +1,6 @@
 // Service worker : met l'app en cache pour qu'elle marche hors connexion.
 // Pense à changer VERSION à chaque mise à jour de l'app.
-const VERSION = 'recomp-v3.1.0';
+const VERSION = 'recomp-v3.1.1';
 const SHELL = [
   './',
   './index.html',

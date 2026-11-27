@@ -1,5 +1,5 @@
 // Carte musculaire (face + dos) colorée selon le volume de la semaine ou les muscles d'un exercice.
-import { h } from '../ui.js';
+import { h, add } from '../ui.js';
 import { GROUPS, volumeLevel } from '../data/muscles.js';
 
 // Formes simplifiées (silhouette stylisée originale). Coordonnées dans un repère 120 × 260.
@@ -39,12 +39,12 @@ export function volumeMap(vol) {
   const colorFor = (g) => volumeLevel(vol[g] || 0).id;
   const wrap = h('div', { class: 'muscle-map' });
   wrap.innerHTML = `<div class="mm-row"><div>${figure(FRONT, colorFor, 'Muscles de face')}<span>Face</span></div><div>${figure(BACK, colorFor, 'Muscles de dos')}<span>Dos</span></div></div>`;
-  wrap.append(h('div', { class: 'mm-legend small' },
+  add(wrap, h('div', { class: 'mm-legend small' },
     h('span', null, h('i', { class: 'mm-none' }), ' < 4 séries'),
     h('span', null, h('i', { class: 'mm-low' }), ' 4-9'),
     h('span', null, h('i', { class: 'mm-good' }), ' 10-20 (croissance)'),
     h('span', null, h('i', { class: 'mm-high' }), ' > 20')));
-  wrap.append(h('div', { class: 'mm-list' }, GROUPS.map((g) => {
+  add(wrap, h('div', { class: 'mm-list' }, GROUPS.map((g) => {
     const v = vol[g.id] || 0;
     return h('div', { class: 'mm-item' }, h('span', null, g.label), h('div', { class: 'bar' }, h('div', { class: `bar-fill mm-bar-${volumeLevel(v).id}`, style: { width: `${Math.min(100, (v / 20) * 100)}%` } })), h('b', null, v));
   })));

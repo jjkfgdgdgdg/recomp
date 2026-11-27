@@ -1,5 +1,5 @@
 // Arène : combats de boss + coach caméra (entraînement libre, tests de niveau).
-import { h, clear, modal } from '../ui.js';
+import { h, add, clear, modal } from '../ui.js';
 import { getState } from '../store.js';
 import { BOSSES, bossUnlocked, phaseTarget, weeklyEvent } from '../game/bosses.js';
 import { todayISO, daysBetween } from '../engine/dates.js';
@@ -15,13 +15,13 @@ export function renderArena(root) {
   const ps = playerSummary();
   const g = ps.game;
   clear(root);
-  root.append(h('section', { class: 'page-head' },
+  add(root, h('section', { class: 'page-head' },
     h('h1', null, '⚔️ Arène'),
     h('p', { class: 'muted' }, 'Affronte des boss avec ton corps. Chaque rep propre validée par la caméra lui inflige des dégâts : plus ta technique est parfaite, plus tu frappes fort.')));
 
-  root.append(weeklyCard(() => renderArena(root)));
+  add(root, weeklyCard(() => renderArena(root)));
 
-  root.append(h('div', { class: 'boss-grid' }, BOSSES.map((b) => {
+  add(root, h('div', { class: 'boss-grid' }, BOSSES.map((b) => {
     const unlocked = bossUnlocked(b, ps.level);
     const rec = g.bosses[b.id];
     const card = h('button', { class: `boss-card${unlocked ? '' : ' locked'}`, onclick: () => (unlocked ? bossModal(b, root) : null), 'aria-disabled': String(!unlocked) },
@@ -35,7 +35,7 @@ export function renderArena(root) {
     return card;
   })));
 
-  root.append(h('div', { class: 'card soft small' },
+  add(root, h('div', { class: 'card soft small' },
     h('b', null, 'Comment ça marche'),
     h('ul', { class: 'bullets' },
       h('li', null, 'Rep valide = dégâts. Rep parfaite = chance de coup critique (×2).'),
@@ -44,10 +44,10 @@ export function renderArena(root) {
       h('li', null, 'Ta Force augmente tes dégâts, ton Endurance tes PV, ta Technique tes critiques.'),
       h('li', null, 'Pas de caméra ? Mode manuel possible, mais dégâts réduits.'))));
 
-  root.append(challengesSection());
+  add(root, challengesSection());
 
   const coachBox = h('div');
-  root.append(coachBox);
+  add(root, coachBox);
   renderCoach(coachBox);
 }
 
