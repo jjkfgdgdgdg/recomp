@@ -1,5 +1,6 @@
 // Sons (Web Audio) et voix du coach (synthèse vocale du navigateur, gratuite et hors ligne selon l'appareil).
 import { getState } from './store.js';
+import { nativeSpeak, nativeStopSpeaking, nativeKeepAwake } from './native.js';
 
 let ctx = null;
 function audio() {
@@ -102,9 +103,12 @@ let lastSpoken = { text: '', at: 0 };
 export function speak(text, {
   interrupt = false, queue = false, minGap = 0, rate = 1.08, pitch = 1, prefer = null,
 } = {}) {
-  if (!text || getState().settings.voice === false || !('speechSynthesis' in window)) return;
+  if (!text || getState().settings.voice === false) return;
   const now = performance.now();
   if (minGap && lastSpoken.text === text && now - lastSpoken.at < minGap) return;
+  // Appli Android : synthèse vocale native
+  if (nativeSpeak(text, { rate, pitch, interrupt })) { lastSpoken = { text, at: now }; return; }
+  if (!('speechSynthesis' in window)) return;
   if (!interrupt && !queue && speechSynthesis.speaking && now - lastSpoken.at < 1200) return;
   if (interrupt) speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
@@ -118,12 +122,14 @@ export function speak(text, {
 }
 
 export function stopSpeaking() {
+  if (nativeStopSpeaking()) return;
   if ('speechSynthesis' in window) speechSynthesis.cancel();
 }
 
 // Garde l'écran allumé pendant les séances (si le navigateur le permet).
 let wakeLock = null;
 export async function keepAwake(on) {
+  if (nativeKeepAwake(on)) return;
   try {
     if (on && 'wakeLock' in navigator && !wakeLock) {
       wakeLock = await navigator.wakeLock.request('screen');

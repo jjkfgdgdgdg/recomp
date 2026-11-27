@@ -73,6 +73,7 @@ export function encodeChallenge(ch) {
 }
 
 export function decodeChallenge(code) {
+  if (String(code || '').length > 6000) throw new Error('Lien de défi trop long');
   const [data, sum] = String(code || '').split('.');
   if (!data || !sum) throw new Error('Lien de défi incomplet');
   const json = fromBase64Url(data);
@@ -81,5 +82,8 @@ export function decodeChallenge(code) {
   if (ch.v !== 1 || !CHALLENGE[ch.c] || !Array.isArray(ch.s)) throw new Error('Défi non reconnu');
   ch.s = ch.s.filter((x) => Array.isArray(x) && x.length >= 2).map(([n, v, c, d]) => [cleanName(n), Math.max(0, Math.round(Number(v) || 0)), c ? 1 : 0, String(d || '').slice(0, 10)]);
   ch.by = cleanName(ch.by);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ch.t))) ch.t = '2026-01-01';
+  ch.id = String(ch.id || '').replace(/[^a-z0-9]/gi, '').slice(0, 12) || 'defi';
+  ch.s = ch.s.slice(0, 30).map(([n, v, c, d]) => [n, v, c, /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : '']);
   return ch;
 }

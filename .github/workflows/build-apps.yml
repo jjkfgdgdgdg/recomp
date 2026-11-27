@@ -1,0 +1,212 @@
+# Construit les applications Recomp pour PC (Windows, Mac, Linux) et Android, puis publie une version
+# téléchargeable (onglet « Releases » du dépôt). Gratuit avec GitHub Actions.
+#
+# Lancer une version : onglet Actions → « Construire les applis » → Run workflow (ou pousser un tag v1.2.3).
+# Sur une pull request : construction de vérification uniquement (Windows, Linux, Android), sans secrets.
+name: Construire les applis
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Numéro de version (ex. 3.1.0)
+        required: true
+        default: 3.1.0
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - desktop/**
+      - android/**
+      - capacitor.config.json
+      - package.json
+      - package-lock.json
+      - js/native.js
+      - js/platform.js
+      - .github/workflows/build-apps.yml
+
+# Droits minimaux par défaut ; seule la publication a le droit d'écrire
+permissions:
+  contents: read
+
+concurrency:
+  group: build-apps-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VERSION: ${{ inputs.version || (startsWith(github.ref, 'refs/tags/v') && github.ref_name) || '0.0.0-test' }}
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+
+  desktop:
+    needs: tests
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win
+          - os: ubuntu-latest
+            target: --linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Numéro de version
+        shell: bash
+        run: npm version "${VERSION#v}" --no-git-tag-version --allow-same-version
+      - run: node tools/build-www.mjs
+      - name: Construire l'application PC
+        run: npx electron-builder ${{ matrix.target }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recomp-${{ runner.os }}
+          path: |
+            dist-desktop/*.exe
+            dist-desktop/*.AppImage
+          if-no-files-found: error
+          retention-days: 14
+
+  desktop-mac:
+    # Mac : seulement pour les versions publiées (les minutes macOS coûtent 10× plus cher)
+    if: github.event_name != 'pull_request'
+    needs: tests
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm version "${VERSION#v}" --no-git-tag-version --allow-same-version
+      - run: node tools/build-www.mjs
+      - name: Construire l'application Mac (non signée)
+        run: npx electron-builder --mac --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recomp-macOS
+          path: dist-desktop/*.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      # Outil officiel Gradle : vérifie l'intégrité de gradle-wrapper.jar et garde Gradle en cache
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - name: Télécharger Gradle (nouvelles tentatives si le serveur refuse temporairement)
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          for i in 1 2 3 4; do
+            ./gradlew --version --no-daemon && exit 0
+            echo "Téléchargement de Gradle refusé (tentative $i), nouvel essai dans $((i * 20)) s…"
+            sleep $((i * 20))
+          done
+          exit 1
+      - name: Copier l'application dans le projet Android
+        run: node tools/build-www.mjs && npx cap sync android
+      - name: Clé de signature (secrets GitHub, jamais sur les pull requests)
+        if: github.event_name != 'pull_request'
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/recomp.keystore"
+            echo "RECOMP_KEYSTORE_PATH=$RUNNER_TEMP/recomp.keystore" >> "$GITHUB_ENV"
+            echo "Clé de signature trouvée."
+          else
+            echo "::warning::Pas de clé de signature dans les secrets : APK signé avec une clé de débogage (voir le README)."
+          fi
+      - name: Construire l'APK
+        working-directory: android
+        env:
+          RECOMP_KEYSTORE_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_PASSWORD || '' }}
+          RECOMP_KEY_ALIAS: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
+        run: |
+          ./gradlew assembleRelease --no-daemon -PversionCode=${{ github.run_number }} -PversionName="${VERSION#v}"
+          mkdir -p ../dist-android
+          cp app/build/outputs/apk/release/*.apk "../dist-android/Recomp-${VERSION#v}-android.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recomp-Android
+          path: dist-android/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: github.event_name != 'pull_request'
+    needs: [desktop, desktop-mac, android]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: files
+          merge-multiple: true
+      - name: Empreintes SHA-256 (pour vérifier les téléchargements)
+        working-directory: files
+        run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Publier la version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="${VERSION#v}"
+          cat > notes.md <<NOTES
+          ## Recomp ${V}
+
+          | Appareil | Fichier |
+          | --- | --- |
+          | **Windows** | \`Recomp-Setup-${V}.exe\` (installation) ou \`Recomp-Portable-${V}.exe\` (sans installation) |
+          | **Android** | \`Recomp-${V}-android.apk\` |
+          | **Mac** | \`Recomp-${V}-mac.dmg\` |
+          | **Linux** | \`Recomp-${V}-linux.AppImage\` |
+          | **iPhone / iPad** | pas de fichier : ouvre le site dans Safari → Partager → « Sur l'écran d'accueil » |
+
+          Les applis ne sont pas signées par un éditeur payant : Windows et Android afficheront un avertissement
+          la première fois (voir le README, section « Applications PC et téléphone »).
+          Vérifie tes téléchargements avec \`SHA256SUMS.txt\`.
+          NOTES
+          gh release create "v${V}" files/* --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Recomp ${V}" --notes-file notes.md

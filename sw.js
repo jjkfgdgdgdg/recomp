@@ -1,6 +1,6 @@
 // Service worker : met l'app en cache pour qu'elle marche hors connexion.
 // Pense à changer VERSION à chaque mise à jour de l'app.
-const VERSION = 'recomp-v3.0.0';
+const VERSION = 'recomp-v3.1.0';
 const SHELL = [
   './',
   './index.html',
@@ -68,6 +68,8 @@ const SHELL = [
   './js/views/photos.js',
   './js/reminders.js',
   './js/views/reminders.js',
+  './js/platform.js',
+  './js/native.js',
 ];
 const VENDOR_CACHE = 'recomp-vendor-mediapipe-0.10.35';
 

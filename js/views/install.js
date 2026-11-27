@@ -5,6 +5,7 @@ import {
   installState, promptInstall, onInstallChange, appUrl,
 } from '../install.js';
 import { navigate } from '../router.js';
+import { isNativeApp, isElectron, DOWNLOADS_URL } from '../platform.js';
 
 const GUIDES = [
   {
@@ -53,6 +54,10 @@ export function renderInstall(root) {
   const drawStatus = () => {
     st = installState();
     clear(status);
+    if (isNativeApp) {
+      status.append(h('div', { class: 'install-ok' }, '✅'), h('div', null, h('b', null, `Tu utilises l\u2019application Recomp ${isElectron ? 'pour PC' : 'Android'}.`), h('p', { class: 'small muted' }, 'Tout fonctionne hors connexion. Pour l\u2019avoir aussi sur un autre appareil, télécharge la version qui lui correspond ci-dessous.')));
+      return;
+    }
     if (st.installed) {
       status.append(h('div', { class: 'install-ok' }, '✅'), h('div', null, h('b', null, 'Recomp est installée sur cet appareil.'), h('p', { class: 'small muted' }, 'Elle fonctionne aussi hors connexion. Pour l’avoir sur un autre appareil, envoie-toi le lien ci-dessous.')));
       return;
@@ -102,8 +107,25 @@ export function renderInstall(root) {
       h('h1', null, '📲 Installer Recomp'),
       h('p', { class: 'muted' }, 'Gratuit, sans store, sans compte. Une seule adresse pour le téléphone, la tablette et le PC.')),
     status,
+    h('section', { class: 'card downloads' },
+      h('div', { class: 'card-title' }, '📥 Applications à télécharger'),
+      h('p', { class: 'small muted' }, 'Gratuites, sans store. Construites automatiquement à chaque nouvelle version.'),
+      h('div', { class: 'dl-grid' },
+        h('div', { class: 'dl' }, h('b', null, '🪟 Windows'), h('span', { class: 'small muted' }, 'Recomp-Setup.exe (ou Portable)')),
+        h('div', { class: 'dl' }, h('b', null, '🤖 Android'), h('span', { class: 'small muted' }, 'Recomp-android.apk')),
+        h('div', { class: 'dl' }, h('b', null, '🍎 Mac'), h('span', { class: 'small muted' }, 'Recomp-mac.dmg')),
+        h('div', { class: 'dl' }, h('b', null, '🐧 Linux'), h('span', { class: 'small muted' }, 'Recomp-linux.AppImage'))),
+      h('a', { class: 'btn primary', href: DOWNLOADS_URL, target: '_blank', rel: 'noopener' }, 'Ouvrir la page des téléchargements'),
+      h('details', { class: 'small' },
+        h('summary', null, 'Avertissement à l\u2019installation ? C\u2019est normal'),
+        h('ul', { class: 'bullets' },
+          h('li', null, 'Windows : « Windows a protégé votre ordinateur » → « Informations complémentaires » → « Exécuter quand même ». (L\u2019appli n\u2019est pas signée par un éditeur payant.)'),
+          h('li', null, 'Android : autorise ton navigateur à « installer des applis inconnues » quand le téléphone le demande.'),
+          h('li', null, 'Mac : clic droit sur Recomp → « Ouvrir » la première fois.'),
+          h('li', null, 'iPhone / iPad : pas de fichier à installer (Apple l\u2019interdit sans compte payant) : utilise l\u2019app web, ajoutée à l\u2019écran d\u2019accueil depuis Safari.'),
+          h('li', null, 'Vérifie que le fichier vient bien de la page officielle (onglet « Releases » du dépôt) et compare son empreinte avec SHA256SUMS.txt.')))),
     h('section', { class: 'card' },
-      h('div', { class: 'card-title' }, '🔗 Envoyer l’app sur un autre appareil'),
+      h('div', { class: 'card-title' }, '🔗 Envoyer l\u2019app sur un autre appareil'),
       h('div', { class: 'link-box' }, url),
       h('div', { class: 'row gap wrap' },
         h('button', { class: 'btn primary', onclick: share }, 'Partager le lien'),

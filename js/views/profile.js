@@ -7,6 +7,7 @@ import { DAY_SHORT, todayISO } from '../engine/dates.js';
 import { navigate } from '../router.js';
 import { speak, unlockAudio } from '../audio.js';
 import { PERSONAS, say } from '../voice.js';
+import { saveFile } from '../native.js';
 
 const LEVEL = ['Jamais', 'Débutant', 'Intermédiaire', 'Avancé'];
 
@@ -77,14 +78,7 @@ export function renderProfile(root) {
     h('div', { class: 'row gap wrap' },
       h('button', {
         class: 'btn ghost',
-        onclick: () => {
-          const blob = new Blob([exportData()], { type: 'application/json' });
-          const a = h('a', { href: URL.createObjectURL(blob), download: `recomp-sauvegarde-${todayISO()}.json` });
-          document.body.append(a);
-          a.click();
-          a.remove();
-          setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-        },
+        onclick: () => saveFile(`recomp-sauvegarde-${todayISO()}.json`, exportData(), 'application/json'),
       }, 'Exporter'),
       h('button', { class: 'btn ghost', onclick: () => fileInput.click() }, 'Importer'),
       fileInput,

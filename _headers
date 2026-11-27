@@ -1,4 +1,11 @@
-# En-têtes pour Netlify et Cloudflare Pages (ignoré par GitHub Pages).
+# En-têtes de sécurité pour Netlify et Cloudflare Pages (GitHub Pages utilise la balise CSP de index.html).
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' data: blob:; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; manifest-src 'self'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Cross-Origin-Opener-Policy: same-origin
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
 /sw.js
   Cache-Control: no-cache
 /manifest.webmanifest
@@ -7,6 +14,3 @@
   Cache-Control: public, max-age=31536000, immutable
 /vendor/mediapipe/wasm/*.wasm
   Content-Type: application/wasm
-/*
-  Permissions-Policy: camera=(self), microphone=()
-  X-Content-Type-Options: nosniff

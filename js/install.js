@@ -1,4 +1,5 @@
 // Installation de l'app (PWA) sur téléphone, tablette et PC + détection des mises à jour.
+import { isNativeApp } from './platform.js';
 
 let deferredPrompt = null;
 const listeners = new Set();
@@ -23,7 +24,7 @@ export function onInstallChange(fn) {
 }
 
 export function isStandalone() {
-  return window.matchMedia?.('(display-mode: standalone)').matches
+  return isNativeApp || window.matchMedia?.('(display-mode: standalone)').matches
     || window.matchMedia?.('(display-mode: window-controls-overlay)').matches
     || navigator.standalone === true;
 }
@@ -83,7 +84,8 @@ export function onUpdateReady(fn) {
 }
 
 export function registerServiceWorker() {
-  if (!('serviceWorker' in navigator) || location.protocol === 'file:' || navigator.webdriver) return;
+  // Dans les applis PC / Android, les fichiers sont déjà sur l'appareil : pas besoin de service worker
+  if (isNativeApp || !('serviceWorker' in navigator) || location.protocol === 'file:' || navigator.webdriver) return;
   window.addEventListener('load', async () => {
     try {
       const reg = await navigator.serviceWorker.register('./sw.js');
@@ -108,5 +110,10 @@ export function registerServiceWorker() {
 
 /** Lien de l'app à partager vers un autre appareil (sans le #/route). */
 export function appUrl() {
+  // Dans les applis natives, on partage l'adresse du site web (sinon le lien ne s'ouvrirait pas chez un ami)
+  if (isNativeApp) return WEB_URL;
   return `${location.origin}${location.pathname.replace(/index\.html$/, '')}`;
 }
+
+// Adresse publique du site (GitHub Pages par défaut). À changer si l'app est hébergée ailleurs.
+export const WEB_URL = 'https://jjkfgdgdgdg.github.io/recomp/';

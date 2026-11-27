@@ -758,3 +758,8 @@ button.ex-row { width: 100%; text-align: left; cursor: pointer; }
 .cmp-label.l { left: 8px; } .cmp-label.r { right: 8px; }
 .cmp-range { width: 100%; accent-color: var(--accent); }
 .sheet.wide { max-width: 720px; }
+
+/* ---------- Téléchargements ---------- */
+.dl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0 12px; }
+.dl { display: flex; flex-direction: column; padding: 10px 12px; border-radius: 12px; background: var(--surface2); }
+.downloads details { margin-top: 10px; }

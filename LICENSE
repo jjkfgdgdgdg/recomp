@@ -1,0 +1,9 @@
+Recomp — Copyright (c) 2026 jjkfgdgdgdg. Tous droits réservés.
+
+Le code source est visible publiquement, mais aucune licence d'utilisation, de copie, de modification
+ou de redistribution n'est accordée sans l'autorisation écrite du propriétaire.
+Tu peux bien sûr utiliser gratuitement l'application Recomp elle-même.
+
+Composants tiers inclus, qui gardent leur propre licence :
+- MediaPipe Tasks Vision et modèles Pose Landmarker — Google, licence Apache 2.0 (voir vendor/mediapipe/NOTICE.md)
+- Electron, Capacitor et leurs dépendances (applications PC et Android) — licence MIT

@@ -1,0 +1,22 @@
+# Propose automatiquement les mises à jour de sécurité des dépendances.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      capacitor:
+        patterns: ["@capacitor/*", "@capacitor-community/*"]
+      electron:
+        patterns: ["electron", "electron-builder"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
