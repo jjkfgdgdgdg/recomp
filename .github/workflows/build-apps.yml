@@ -131,7 +131,19 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      # Outil officiel Gradle : vérifie l'intégrité de gradle-wrapper.jar et garde Gradle en cache
+      - uses: gradle/actions/setup-gradle@v4
       - run: npm ci
+      - name: Télécharger Gradle (nouvelles tentatives si le serveur refuse temporairement)
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          for i in 1 2 3 4; do
+            ./gradlew --version --no-daemon && exit 0
+            echo "Téléchargement de Gradle refusé (tentative $i), nouvel essai dans $((i * 20)) s…"
+            sleep $((i * 20))
+          done
+          exit 1
       - name: Copier l'application dans le projet Android
         run: node tools/build-www.mjs && npx cap sync android
       - name: Clé de signature (secrets GitHub, jamais sur les pull requests)
@@ -152,7 +164,6 @@ jobs:
           RECOMP_KEYSTORE_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_PASSWORD || '' }}
           RECOMP_KEY_ALIAS: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
         run: |
-          chmod +x gradlew
           ./gradlew assembleRelease --no-daemon -PversionCode=${{ github.run_number }} -PversionName="${VERSION#v}"
           mkdir -p ../dist-android
           cp app/build/outputs/apk/release/*.apk "../dist-android/Recomp-${VERSION#v}-android.apk"

@@ -6,8 +6,9 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { sanitize } from '../js/store.js';
 import { decodeChallenge } from '../js/game/challenges.js';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 function trackedFiles() {
   try {
