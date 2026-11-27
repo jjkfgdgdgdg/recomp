@@ -17,7 +17,7 @@ export function defaultState() {
       breath: [], // { date, secs, pattern }
     },
     records: {}, // trackerId -> { reps, holdSec, date }
-    settings: { voice: true, sound: true, model: 'lite', voiceCounts: true, persona: 'calm' },
+    settings: { voice: true, sound: true, model: 'auto', voiceCounts: true, persona: 'calm' },
     game: null, // progression RPG (voir js/game/leveling.js)
     active: null, // séance en cours
   };
@@ -31,6 +31,10 @@ function merge(base, saved) {
   out.logs = { ...base.logs, ...(saved.logs || {}) };
   out.settings = { ...base.settings, ...(saved.settings || {}) };
   out.progression = { ...base.progression, ...(saved.progression || {}) };
+  // L'ancien réglage par défaut « lite » (jamais choisi à la main) passe en « auto » :
+  // le modèle précis voit beaucoup mieux les jambes, et l'app repasse seule en rapide si l'appareil rame.
+  if (!out.settings.modelPicked && out.settings.model === 'lite') out.settings.model = 'auto';
+  if (!['auto', 'lite', 'full'].includes(out.settings.model)) out.settings.model = 'auto';
   return out;
 }
 

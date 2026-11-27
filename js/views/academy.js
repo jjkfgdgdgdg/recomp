@@ -1,5 +1,5 @@
 // Académie : guides, bibliothèque, carte musculaire, liens bien-être.
-import { h, clear } from '../ui.js';
+import { h, add, clear } from '../ui.js';
 import { GUIDES, GUIDE } from '../data/guides.js';
 import { getState } from '../store.js';
 import { weeklyVolume, GROUPS, volumeLevel } from '../data/muscles.js';
@@ -13,7 +13,7 @@ export function renderAcademy(root) {
   const vol = weeklyVolume(getState(), todayISO());
   const lagging = GROUPS.filter((g) => (vol[g.id] || 0) < 4).map((g) => g.label);
   const cats = [...new Set(GUIDES.map((g) => g.cat))];
-  root.append(
+  add(root,
     h('section', { class: 'page-head' }, h('h1', null, '🎓 Académie'), h('p', { class: 'muted' }, 'Tout ce qu’il faut savoir pour prendre du muscle et progresser en Muay Thai.')),
     h('a', { class: 'card feature', href: '#/library' },
       h('div', { class: 'feature-demo' }, demoPlayer('squat', { size: 120, compact: true })),
@@ -41,7 +41,7 @@ export function renderGuide(root, { id }) {
   clear(root);
   const idx = GUIDES.indexOf(g);
   const next = GUIDES[(idx + 1) % GUIDES.length];
-  root.append(h('article', { class: 'guide' },
+  add(root, h('article', { class: 'guide' },
     h('button', { class: 'link small', onclick: () => history.back() }, '← Retour'),
     h('div', { class: 'guide-emoji' }, g.emoji),
     h('h1', null, g.title),

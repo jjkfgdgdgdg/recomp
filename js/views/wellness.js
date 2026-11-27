@@ -1,5 +1,5 @@
 // Écran « Bien-être » : respiration guidée, routines de mobilité, sommeil et récupération.
-import { h, clear, chips, icon } from '../ui.js';
+import { h, add, clear, chips, icon } from '../ui.js';
 import { getState } from '../store.js';
 import { ROUTINES, routineSession } from '../engine/planner.js';
 import { todayISO, addDays, shortDate, formatDuration } from '../engine/dates.js';
@@ -20,7 +20,7 @@ export function renderWellness(root) {
   let cleanup = null;
   const s = getState();
   clear(root);
-  root.append(h('section', { class: 'page-head' }, h('h1', null, 'Bien-être'), h('p', { class: 'muted' }, 'Récupérer, respirer, dormir : la moitié de tes progrès se fait ici.')));
+  add(root, h('section', { class: 'page-head' }, h('h1', null, 'Bien-être'), h('p', { class: 'muted' }, 'Récupérer, respirer, dormir : la moitié de tes progrès se fait ici.')));
 
   // ---- Respiration
   let pattern = PATTERNS[0];
@@ -57,7 +57,7 @@ export function renderWellness(root) {
     keepAwake(false);
     circle.classList.remove('grow', 'shrink');
     circle.querySelector('.breath-text').textContent = 'Prêt ?';
-    clear(startBtn).append(icon('play'), ' Commencer');
+    add(clear(startBtn), icon('play'), ' Commencer');
     timeEl.textContent = '';
   };
   const toggle = () => {
@@ -68,7 +68,7 @@ export function renderWellness(root) {
     totalLeft = minutes * 60;
     last = performance.now();
     setPhase(0);
-    clear(startBtn).append(icon('pause'), ' Arrêter');
+    add(clear(startBtn), icon('pause'), ' Arrêter');
     handle = setInterval(() => {
       const now = performance.now();
       const dt = (now - last) / 1000;
@@ -83,7 +83,7 @@ export function renderWellness(root) {
   };
   cleanup = () => stop(false);
 
-  root.append(h('section', { class: 'card breath' },
+  add(root, h('section', { class: 'card breath' },
     h('div', { class: 'card-title' }, '🌬️ Respiration guidée'),
     chips(PATTERNS.map((p) => ({ id: p.id, label: p.label })), pattern.id, { multi: false, onChange: (v) => { stop(); pattern = PATTERNS.find((p) => p.id === v); desc.textContent = pattern.desc; } }),
     desc,
@@ -93,8 +93,8 @@ export function renderWellness(root) {
     startBtn));
 
   // ---- Routines
-  root.append(h('h2', { class: 'section-title' }, 'Routines de mobilité'));
-  root.append(h('div', { class: 'routine-grid' }, Object.entries(ROUTINES).map(([key, r]) => {
+  add(root, h('h2', { class: 'section-title' }, 'Routines de mobilité'));
+  add(root, h('div', { class: 'routine-grid' }, Object.entries(ROUTINES).map(([key, r]) => {
     const sess = routineSession(key, s.profile);
     return h('button', { class: 'routine-card', onclick: () => navigate(`#/session/routine-${key}`) },
       h('span', { class: 'tc-emoji' }, r.emoji), h('b', null, r.title), h('span', { class: 'muted small' }, `~${sess.minutes} min · ${sess.blocks[0].items.length} exercices`));
@@ -104,7 +104,7 @@ export function renderWellness(root) {
   const days = Array.from({ length: 14 }, (_, i) => addDays(todayISO(), i - 13));
   const ck = s.logs.checkins;
   if (days.some((d) => ck[d])) {
-    root.append(h('section', { class: 'card' },
+    add(root, h('section', { class: 'card' },
       h('div', { class: 'card-title' }, '😴 Sommeil & forme (14 jours)'),
       h('div', { class: 'mini-bars' }, days.map((d) => {
         const c = ck[d];
@@ -117,7 +117,7 @@ export function renderWellness(root) {
   }
 
   // ---- Conseils
-  root.append(h('section', { class: 'card soft' },
+  add(root, h('section', { class: 'card soft' },
     h('div', { class: 'card-title' }, '🛌 Récupération : les bases'),
     h('ul', { class: 'bullets small' },
       h('li', null, 'Dors 7 à 9 h, à heures régulières. Chambre fraîche (18-19 °C) et sombre.'),

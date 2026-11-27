@@ -1,7 +1,5 @@
 // Lecteur de séance guidée : exercice par exercice, repos automatiques, saisie des reps, progression.
-import {
-  h, clear, icon, ring, stepper, toast, confirmBox,
-} from '../ui.js';
+import { h, add, clear, icon, ring, stepper, toast, confirmBox } from '../ui.js';
 import { getState, update } from '../store.js';
 import { EX } from '../data/exercises.js';
 import { applyResult } from '../engine/progression.js';
@@ -49,7 +47,7 @@ export function renderSession(root, { id }) {
   function overview() {
     stopTimers();
     clear(root);
-    root.append(h('section', { class: 'page-head' },
+    add(root, h('section', { class: 'page-head' },
       h('button', { class: 'link small', onclick: () => history.back() }, '← Retour'),
       h('div', { class: 'row between' }, typeBadge(session.type), h('span', { class: 'muted small' }, `~${session.minutes} min · ${items.length} exercices`)),
       h('h1', null, session.title),
@@ -81,7 +79,7 @@ export function renderSession(root, { id }) {
     const cuesOpen = h('details', { class: 'cues-box' },
       h('summary', null, 'Consignes'),
       h('ol', { class: 'cues' }, (item.kind === 'interval' ? item.exercises.map((x) => `${EX[x]?.name} : ${EX[x]?.cues[0] || ''}`) : ex?.cues || []).map((c) => h('li', null, c))));
-    root.append(h('section', { class: 'player' },
+    add(root, h('section', { class: 'player' },
       h('div', { class: 'player-top' },
         h('button', { class: 'icon-btn', 'aria-label': 'Quitter', onclick: () => quit() }, icon('close')),
         h('div', { class: 'progress-top grow' }, h('div', { class: 'progress-top-fill', style: { width: `${pct}%` } })),
@@ -225,12 +223,12 @@ export function renderSession(root, { id }) {
         running = false;
         clearInterval(timer);
         timer = null;
-        clear(playBtn).append(icon('play'), ' Reprendre');
+        add(clear(playBtn), icon('play'), ' Reprendre');
       } else {
         running = true;
         last = performance.now();
         timer = setInterval(tick, 200);
-        clear(playBtn).append(icon('pause'), ' Pause');
+        add(clear(playBtn), icon('pause'), ' Pause');
         if (remaining === total) speak(itemTitle(item), { interrupt: true });
       }
     };
@@ -294,7 +292,7 @@ export function renderSession(root, { id }) {
         stepLabel.textContent = step.label;
         time.textContent = formatDuration(remaining);
         box.className = `phase-box k-${step.kind}`;
-        clear(playBtn).append(icon(running ? 'pause' : 'play'), running ? ' Pause' : ' Reprendre');
+        add(clear(playBtn), icon(running ? 'pause' : 'play'), running ? ' Pause' : ' Reprendre');
       },
       onCombo: (t) => { combo.textContent = t; combo.classList.remove('pop'); void combo.offsetWidth; combo.classList.add('pop'); },
       onStep: (st) => { if (st.kind !== 'work') combo.textContent = st.kind === 'rest' ? 'Respire, secoue les épaules, bois une gorgée' : ''; },
@@ -331,7 +329,7 @@ export function renderSession(root, { id }) {
         time.textContent = formatDuration(remaining);
         nextEl.textContent = step.kind === 'work' ? `Tour ${step.round}/${step.of}` : step.next ? `Prochain : ${step.next}` : '';
         box.className = `phase-box k-${step.kind}`;
-        clear(playBtn).append(icon(running ? 'pause' : 'play'), running ? ' Pause' : ' Reprendre');
+        add(clear(playBtn), icon(running ? 'pause' : 'play'), running ? ' Pause' : ' Reprendre');
       },
       onDone: () => { run.results[run.idx].sets.push({ rounds: item.rounds }); saveRun(); setTimeout(() => nextItem(), 1500); },
     });
@@ -357,7 +355,7 @@ export function renderSession(root, { id }) {
       else speak(`Repos, ${Math.round(secs)} secondes`);
     }
     const go = () => { stopTimers(); then(); };
-    root.append(h('section', { class: 'player rest' },
+    add(root, h('section', { class: 'player rest' },
       h('div', { class: 'upper muted small' }, 'Repos'),
       r,
       h('div', { class: 'muted' }, 'Ensuite : ', h('b', null, nextLabel)),
@@ -396,7 +394,7 @@ export function renderSession(root, { id }) {
       if (message) { run.messages.push(message); toast(message, 3500); }
       nextItem();
     };
-    root.append(h('section', { class: 'player center' },
+    add(root, h('section', { class: 'player center' },
       h('h2', null, `${itemTitle(item)} : c’était comment ?`),
       h('p', { class: 'muted' }, 'Ta réponse règle automatiquement ta prochaine séance.'),
       h('div', { class: 'rpe' },
@@ -431,7 +429,7 @@ export function renderSession(root, { id }) {
       toast('Séance enregistrée 🔥');
       navigate('#/today');
     };
-    root.append(h('section', { class: 'player center finish' },
+    add(root, h('section', { class: 'player center finish' },
       h('div', { class: 'finish-emoji' }, '🏆'),
       h('h1', null, 'Séance terminée !'),
       h('div', { class: 'stats3' },

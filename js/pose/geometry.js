@@ -27,6 +27,22 @@ export function vis(p) {
   return p.v ?? p.visibility ?? 1;
 }
 
+// Les jambes sont-elles dans l'image ? null si oui, sinon un conseil de placement.
+// Travaille sur les points bruts de MediaPipe (x, y entre 0 et 1 quand ils sont dans l'image).
+export function legsIssue(lm, minVis = 0.3) {
+  if (!lm) return null;
+  const best = (a, b) => (vis(lm[a]) >= vis(lm[b]) ? lm[a] : lm[b]);
+  const knee = best(LM.lKnee, LM.rKnee);
+  const ankle = best(LM.lAnkle, LM.rAnkle);
+  if (!knee || vis(knee) < minVis || knee.y > 1) {
+    return 'Je ne vois pas tes jambes : recule, ou baisse et incline le téléphone pour être visible de la tête aux pieds';
+  }
+  if (!ankle || vis(ankle) < minVis || ankle.y > 1) {
+    return 'Tes pieds sortent de l’image : recule d’un pas ou pose le téléphone plus bas';
+  }
+  return null;
+}
+
 export function angle(a, b, c) {
   const abx = a.x - b.x; const aby = a.y - b.y;
   const cbx = c.x - b.x; const cby = c.y - b.y;

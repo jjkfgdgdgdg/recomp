@@ -4,6 +4,7 @@ const BASE = new URL('../../vendor/mediapipe/', import.meta.url).href;
 let current = null; // { model, promise }
 
 export async function getDetector(model = 'lite') {
+  if (model !== 'full') model = 'lite';
   if (current && current.model === model) return current.promise;
   if (current) {
     try { (await current.promise).close(); } catch { /* ignore */ }
@@ -40,7 +41,9 @@ export async function startCamera(video, facingMode = 'user') {
   }
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: false,
-    video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+    // 4:3 = tout le capteur, donc le champ le plus large et le plus haut (on voit mieux tête et pieds).
+    // Le 16:9 rogne le haut et le bas de l'image, et donc souvent les jambes.
+    video: { facingMode, width: { ideal: 1280 }, height: { ideal: 960 } },
   });
   video.srcObject = stream;
   video.setAttribute('playsinline', '');

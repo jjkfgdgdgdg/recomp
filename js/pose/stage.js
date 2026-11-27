@@ -2,13 +2,21 @@
 import { h } from '../ui.js';
 import { getDetector, startCamera, stopCamera } from './detector.js';
 import { normalize } from './geometry.js';
-import { getState } from '../store.js';
+import { getState, update } from '../store.js';
+
+// Modèle à charger : choix de l'utilisateur, ou « auto » = précis, sauf si l'appareil a déjà montré qu'il rame.
+export function pickModel(settings = getState().settings) {
+  if (settings.model === 'lite' || settings.model === 'full') return settings.model;
+  return settings.autoModel === 'lite' ? 'lite' : 'full';
+}
+
+const SLOW_FPS = 10; // en dessous, le comptage des reps devient approximatif
 
 /**
- * createStage({ onPose(lm, pts, now), onNoPose(now), onFps(fps) })
- * -> { el, video, canvas, ctx, start(), stop(), flip(), facing }
+ * createStage({ onPose(lm, pts, now), onNoPose(now), onFps(fps), onModel(model) })
+ * -> { el, video, canvas, ctx, start(), stop(), flip(), facing, model }
  */
-export function createStage({ onPose, onNoPose, onFps } = {}) {
+export function createStage({ onPose, onNoPose, onFps, onModel } = {}) {
   const video = h('video', { class: 'coach-video', playsinline: true, muted: true, autoplay: true });
   const canvas = h('canvas', { class: 'coach-canvas' });
   const ctx = canvas.getContext('2d');
@@ -20,7 +28,31 @@ export function createStage({ onPose, onNoPose, onFps } = {}) {
   let raf = null;
   let lastVideoTime = -1;
   let frames = 0; let fpsT = performance.now();
-  const api = { el, video, canvas, ctx, facing: 'user' };
+  let slowSamples = 0; let fpsSamples = 0;
+  const api = { el, video, canvas, ctx, facing: 'user', model: 'lite' };
+
+  // Mode auto : si le modèle précis tourne trop lentement, on bascule sur le rapide (et on s'en souvient).
+  function checkSpeed(fps) {
+    fpsSamples += 1;
+    if (fpsSamples <= 2 || api.model !== 'full' || getState().settings.model !== 'auto') return;
+    slowSamples = fps < SLOW_FPS ? slowSamples + 1 : 0;
+    if (slowSamples < 3) return;
+    slowSamples = 0;
+    update((s) => { s.settings.autoModel = 'lite'; });
+    switchModel('lite');
+  }
+
+  async function switchModel(model) {
+    detector = null; // la boucle attend le nouveau modèle
+    api.model = model;
+    onModel?.(model);
+    try {
+      detector = await getDetector(model);
+      lastVideoTime = -1;
+    } catch (e) {
+      console.warn(e);
+    }
+  }
 
   function fit() {
     if (!video.videoWidth) return;
@@ -47,7 +79,7 @@ export function createStage({ onPose, onNoPose, onFps } = {}) {
       return;
     }
     frames += 1;
-    if (now - fpsT > 1000) { onFps?.(frames); frames = 0; fpsT = now; }
+    if (now - fpsT > 1000) { onFps?.(frames); checkSpeed(frames); frames = 0; fpsT = now; }
     const lm = result?.landmarks?.[0];
     if (!lm) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -62,8 +94,18 @@ export function createStage({ onPose, onNoPose, onFps } = {}) {
     stream = await startCamera(video, api.facing);
     fit();
     onStatus?.('Chargement du squelette (la 1re fois peut prendre quelques secondes)…');
-    detector = await getDetector(getState().settings.model || 'lite');
+    api.model = pickModel();
+    try {
+      detector = await getDetector(api.model);
+    } catch (err) {
+      if (api.model === 'lite') throw err;
+      console.warn('Modèle précis indisponible, passage au rapide', err);
+      api.model = 'lite';
+      detector = await getDetector('lite');
+    }
+    onModel?.(api.model);
     window.addEventListener('resize', fit);
+    video.addEventListener('resize', fit); // rotation portrait <-> paysage
     running = true;
     loop();
   };
@@ -89,6 +131,7 @@ export function createStage({ onPose, onNoPose, onFps } = {}) {
     cancelAnimationFrame(raf);
     stopCamera(stream);
     window.removeEventListener('resize', fit);
+    video.removeEventListener('resize', fit);
   };
 
   return api;

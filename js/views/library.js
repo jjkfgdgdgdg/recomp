@@ -1,5 +1,5 @@
 // Bibliothèque d'exercices + fiche détaillée (démo animée, étapes, erreurs, respiration, variantes, vidéos).
-import { h, clear, chips, icon } from '../ui.js';
+import { h, add, clear, chips, icon } from '../ui.js';
 import { EXERCISES, EX, EQUIPMENT, exerciseAllowed } from '../data/exercises.js';
 import { CATEGORIES, techFor, youtubeSearch } from '../data/technique.js';
 import { EXERCISE_DEMO } from '../pose/demos.js';
@@ -29,14 +29,14 @@ export function renderLibrary(root, params = {}) {
       && (!q || e.name.toLowerCase().includes(q) || e.muscles.join(' ').toLowerCase().includes(q))
       && (!onlyMine || exerciseAllowed(e, profile)));
     count.textContent = `${items.length} exercice${items.length > 1 ? 's' : ''}`;
-    items.forEach((e) => list.append(h('a', { class: 'ex-row', href: `#/exercise/${e.id}` },
+    items.forEach((e) => add(list, h('a', { class: 'ex-row', href: `#/exercise/${e.id}` },
       h('div', null, h('b', null, e.name), h('div', { class: 'muted small' }, e.muscles.slice(0, 3).join(' · '))),
       h('div', { class: 'ex-tags' },
         EXERCISE_DEMO[e.id] ? h('span', { title: 'Démo animée' }, '🎬') : null,
         e.track && TRACKERS[e.track] ? h('span', { title: 'Coach caméra' }, '📷') : null,
         h('span', { class: 'stars' }, LEVEL_STARS[e.level])))));
   };
-  root.append(
+  add(root,
     h('section', { class: 'page-head' },
       h('a', { class: 'link small', href: '#/academy' }, '← Académie'),
       h('h1', null, '📚 Bibliothèque d’exercices'),
@@ -59,7 +59,7 @@ export function renderExercise(root, { id }) {
   const allowed = exerciseAllowed(ex, profile);
   const groups = exerciseGroups(ex.id);
   clear(root);
-  root.append(
+  add(root,
     h('section', { class: 'page-head' },
       h('button', { class: 'link small', onclick: () => history.back() }, '← Retour'),
       h('h1', null, ex.name),

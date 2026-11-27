@@ -1,5 +1,5 @@
 // Écran « Aujourd'hui » : check-in de forme, séance du jour, nutrition, hydratation.
-import { h, clear, chips, bar, toast, fmt, icon } from '../ui.js';
+import { h, add, clear, chips, bar, toast, fmt, icon } from '../ui.js';
 import { getState, update } from '../store.js';
 import { todayISO, prettyDate, DAY_SHORT, weekday } from '../engine/dates.js';
 import { readinessAdvice } from '../engine/readiness.js';
@@ -35,32 +35,32 @@ export function renderToday(root) {
   const hour = new Date().getHours();
   const hello = hour < 12 ? 'Bonjour' : hour < 18 ? 'Salut' : 'Bonsoir';
   const st = streak();
-  root.append(h('section', { class: 'hero' },
+  add(root, h('section', { class: 'hero' },
     h('div', null,
       h('div', { class: 'muted small' }, prettyDate(iso)),
       h('h1', null, `${hello}${p.name ? ` ${p.name}` : ''} !`)),
     h('div', { class: 'streak', title: 'Série de jours actifs' }, icon('flame', 18), h('b', null, st), h('span', null, 'jour' + (st > 1 ? 's' : '')))));
 
-  root.append(playerMini());
+  add(root, playerMini());
   const banner = installBanner(s.settings, () => renderToday(root));
-  if (banner) root.append(banner);
+  if (banner) add(root, banner);
 
   // ---- Semaine
   const wk = weekDoneCount(iso);
-  root.append(h('div', { class: 'week-strip' }, wk.days.map((d, i) => h('div', {
+  add(root, h('div', { class: 'week-strip' }, wk.days.map((d, i) => h('div', {
     class: `wd${d === iso ? ' today' : ''}${wk.done[i] ? ' done' : ''} t-${wk.planned[i]}`,
     title: TYPE_META[wk.planned[i]].label,
   }, h('span', null, DAY_SHORT[i][0]), h('i', null, wk.done[i] ? '✓' : TYPE_META[wk.planned[i]].emoji)))));
 
   // ---- Check-in
-  root.append(checkinCard(iso, () => renderToday(root)));
+  add(root, checkinCard(iso, () => renderToday(root)));
 
   // ---- Quêtes du jour
-  root.append(questsCard(iso, () => renderToday(root)));
+  add(root, questsCard(iso, () => renderToday(root)));
 
   // ---- Boss de la semaine
   const wk2 = weeklyCard(() => renderToday(root), { compact: true });
-  if (wk2) root.append(wk2);
+  if (wk2) add(root, wk2);
 
   // ---- Séance du jour
   const session = sessionFor(iso);
@@ -68,7 +68,7 @@ export function renderToday(root) {
   const active = s.active && s.active.id === iso ? s.active : null;
   const card = h('section', { class: `card session-card t-${session.type}` });
   if (session.type === 'rest') {
-    card.append(
+    add(card,
       h('div', { class: 'row between' }, typeBadge('rest'), h('span', { class: 'muted small' }, `Semaine ${session.week}`)),
       h('h2', null, 'Jour de repos 😴'),
       h('p', { class: 'muted' }, 'Le repos fait partie du programme : c’est là que tu progresses. Idée : 20-30 min de marche + une routine de mobilité.'),
@@ -76,7 +76,7 @@ export function renderToday(root) {
         h('button', { class: 'btn ghost', onclick: () => navigate('#/session/routine-morning') }, '🌅 Routine mobilité'),
         h('button', { class: 'btn ghost', onclick: () => navigate('#/wellness') }, '🧘 Respiration')));
   } else {
-    card.append(
+    add(card,
       h('div', { class: 'row between' }, typeBadge(session.type), h('span', { class: 'muted small' }, `Semaine ${session.week} · ~${session.minutes} min`)),
       h('h2', null, session.title),
       session.deload ? h('div', { class: 'pill info' }, '🔋 Semaine de décharge : volume réduit pour récupérer') : null,
@@ -92,7 +92,7 @@ export function renderToday(root) {
           onclick: () => { update((st2) => { st2.overrides = { ...(st2.overrides || {}), [iso]: 'force' }; }); renderToday(root); },
         }, 'Faire la séance normale') : null));
   }
-  root.append(card);
+  add(root, card);
 
   // ---- Nutrition & eau
   const n = nutrition();
@@ -111,7 +111,7 @@ export function renderToday(root) {
       award(15, SPLIT.water, 'Hydratation');
     }
   };
-  root.append(h('section', { class: 'grid2 cards' },
+  add(root, h('section', { class: 'grid2 cards' },
     h('div', { class: 'card' },
       h('div', { class: 'card-title' }, '🍽️ Nutrition du jour'),
       h('div', { class: 'big-num' }, fmt(n.kcal), h('small', null, ' kcal')),
@@ -129,13 +129,13 @@ export function renderToday(root) {
         h('button', { class: 'btn small ghost', 'aria-label': 'Retirer 250 ml', onclick: () => addW(-250) }, '−')))));
 
   // ---- Raccourcis
-  root.append(h('section', { class: 'quick' },
+  add(root, h('section', { class: 'quick' },
     h('button', { class: 'quick-btn', onclick: () => navigate('#/arena') }, h('span', null, '⚔️'), 'Boss & caméra'),
     h('button', { class: 'quick-btn', onclick: () => navigate('#/timer') }, h('span', null, '🥊'), 'Minuteur rounds'),
     h('button', { class: 'quick-btn', onclick: () => navigate('#/wellness') }, h('span', null, '🧘'), 'Respiration'),
     h('button', { class: 'quick-btn', onclick: () => navigate('#/library') }, h('span', null, '📚'), 'Exercices')));
   if (!(s.settings.reminders?.notify) && !s.settings.remindersHint) {
-    root.append(h('section', { class: 'card soft row between' },
+    add(root, h('section', { class: 'card soft row between' },
       h('span', { class: 'small' }, '⏰ Un rappel pour ne jamais rater ta séance ?'),
       h('div', { class: 'row gap' },
         h('button', { class: 'btn small ghost', onclick: () => navigate('#/reminders') }, 'Configurer'),
@@ -143,7 +143,7 @@ export function renderToday(root) {
   }
 
   const tip = TIPS[(weekday(iso) + new Date().getDate()) % TIPS.length];
-  root.append(h('section', { class: 'card soft tip' }, h('b', null, '💡 Conseil du jour'), h('p', null, tip)));
+  add(root, h('section', { class: 'card soft tip' }, h('b', null, '💡 Conseil du jour'), h('p', null, tip)));
 }
 
 function checkinCard(iso, rerender) {

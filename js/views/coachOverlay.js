@@ -1,7 +1,8 @@
 // Coach caméra plein écran : vidéo + squelette + compteur + corrections vocales.
-import { h, icon, clear, toast } from '../ui.js';
+import { h, add, icon, clear, toast } from '../ui.js';
 import { drawSkeleton } from '../pose/draw.js';
-import { TRACKERS } from '../pose/trackers.js';
+import { TRACKERS, UPPER_ONLY } from '../pose/trackers.js';
+import { legsIssue } from '../pose/geometry.js';
 import { createStage, cameraErrorMessage } from '../pose/stage.js';
 import {
   speak, beep, success, unlockAudio, keepAwake, stopSpeaking, vibrate, countdownBeep,
@@ -38,6 +39,10 @@ export function openCoach(opts) {
   let noPoseSince = null;
   let limitTimer = null;
   let lastLimitWhole = null;
+  let legsMsg = null; // conseil si les jambes ne sont pas dans l'image
+  let legsSince = null;
+  let legsSpoken = 0;
+  const needsLegs = !UPPER_ONLY.has(opts.trackerId);
   const vp = voiceParams();
   const talk = (text, o = {}) => speak(text, { ...vp, ...o });
 
@@ -58,13 +63,18 @@ export function openCoach(opts) {
     gauge, comboEl, bigMsg, feedbackEl, fpsEl);
 
   const stage = createStage({
-    onFps: (f) => { fpsEl.textContent = `${f} img/s`; },
+    onFps: (f) => { fpsEl.textContent = `${f} img/s · ${stage.model === 'full' ? 'précis' : 'rapide'}`; },
+    onModel: (m) => { if (m === 'lite' && active) toast('Appareil un peu lent : passage au modèle rapide'); },
     onNoPose: (now) => {
       if (noPoseSince === null) noPoseSince = now;
       if (now - noPoseSince > 600) setFeedback({ text: 'Je ne te vois pas : recule et mets tout ton corps dans l’image', level: 'warn' });
     },
     onPose: (lm, pts, now) => {
       noPoseSince = null;
+      // On attend ~0,8 s avant d'afficher le conseil, pour ne pas clignoter à chaque image ratée.
+      const issue = needsLegs ? legsIssue(lm) : null;
+      if (!issue) { legsSince = null; legsMsg = null; } else if (legsSince === null) legsSince = now;
+      else if (now - legsSince > 800) legsMsg = issue;
       const st = active ? tracker.update(pts, now) : preview.update(pts, now);
       drawSkeleton(stage.ctx, lm, st.joints);
       render(st);
@@ -82,7 +92,8 @@ export function openCoach(opts) {
   const placeCard = h('div', { class: 'coach-place' },
     h('div', { class: 'place-title' }, '📱 Comment te placer'),
     h('p', null, def.place),
-    h('p', { class: 'muted small' }, `Vue conseillée : ${def.view}. Lumière de face, pas de contre-jour. La vidéo reste sur ton appareil.`));
+    needsLegs ? h('p', { class: 'small' }, '👣 Le squelette doit voir de la tête aux pieds. Debout : téléphone en portrait, posé à hauteur de hanches. Au sol (pompes, gainage…) : téléphone en paysage, posé par terre.') : null,
+    h('p', { class: 'muted small' }, `Vue conseillée : ${def.view}. Lumière de face, pas de contre-jour, fond dégagé. La vidéo reste sur ton appareil.`));
 
   const root = h('div', { class: 'coach', role: 'dialog', 'aria-label': `Coach caméra : ${opts.title || def.label}` },
     h('div', { class: 'coach-top' },
@@ -103,7 +114,7 @@ export function openCoach(opts) {
 
   function toggleVoice() {
     update((s) => { s.settings.voice = !s.settings.voice; });
-    clear(voiceBtn).append(icon(getState().settings.voice ? 'volume' : 'mute'));
+    add(clear(voiceBtn), icon(getState().settings.voice ? 'volume' : 'mute'));
     if (!getState().settings.voice) stopSpeaking();
   }
 
@@ -197,7 +208,9 @@ export function openCoach(opts) {
 
   function render(st) {
     if (!active) {
-      setFeedback(st.ready ? { text: 'Position OK ✅', level: 'good' } : st.feedback);
+      // Les jambes hors champ passent avant « Position OK » : MediaPipe devine parfois des pieds invisibles.
+      if (legsMsg) setFeedback({ text: legsMsg, level: 'warn' });
+      else setFeedback(st.ready ? { text: 'Position OK ✅', level: 'good' } : st.feedback);
       return;
     }
     if (def.mode === 'hold') {
@@ -212,7 +225,11 @@ export function openCoach(opts) {
     metricEl.textContent = st.metric ? `${st.metric.label} ${st.metric.value}${st.metric.unit}` : '';
     gaugeFill.style.height = `${Math.round((st.progress || 0) * 100)}%`;
     gauge.classList.toggle('full', (st.progress || 0) >= 0.99);
-    setFeedback(st.feedback);
+    setFeedback(st.feedback || (legsMsg ? { text: legsMsg, level: 'warn' } : null));
+    if (legsMsg && !st.feedback && performance.now() - legsSpoken > 12000) {
+      legsSpoken = performance.now();
+      talk(legsMsg.split(' : ')[0], { minGap: 8000 });
+    }
     if (st.feedback?.level === 'bad' && performance.now() - lastBadSpoken > 4000) {
       lastBadSpoken = performance.now();
       talk(st.feedback.text, { minGap: 4000 });
@@ -310,7 +327,7 @@ export function openCoach(opts) {
       h('div', { class: 'row gap' },
         h('button', { class: 'btn ghost light', onclick: () => restart() }, 'Recommencer'),
         h('button', { class: 'btn primary', onclick: () => close(s) }, 'Valider')));
-    root.append(card);
+    add(root, card);
     root.summaryCard = card;
   }
 

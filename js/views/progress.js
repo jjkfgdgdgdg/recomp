@@ -1,5 +1,5 @@
 // Écran « Progrès » : poids, séances, records, tests, historique.
-import { h, clear, numInput, toast, fmt, modal, confirmBox, esc } from '../ui.js';
+import { h, add, clear, numInput, toast, fmt, modal, confirmBox, esc } from '../ui.js';
 import { getState, update } from '../store.js';
 import { todayISO, shortDate, daysBetween, formatDuration } from '../engine/dates.js';
 import { EX } from '../data/exercises.js';
@@ -14,7 +14,7 @@ import { SPLIT } from '../game/leveling.js';
 export function renderProgress(root) {
   const s = getState();
   clear(root);
-  root.append(h('section', { class: 'page-head' }, h('h1', null, 'Mes progrès')));
+  add(root, h('section', { class: 'page-head' }, h('h1', null, 'Mes progrès')));
 
   // ---- Statistiques
   const today = todayISO();
@@ -22,7 +22,7 @@ export function renderProgress(root) {
   const last7 = sessions.filter((x) => daysBetween(x.date, today) < 7);
   const last30 = sessions.filter((x) => daysBetween(x.date, today) < 30);
   const minutes = sessions.reduce((t, x) => t + (x.durationSec || 0), 0) / 60;
-  root.append(h('section', { class: 'stats4' },
+  add(root, h('section', { class: 'stats4' },
     stat(streak(), 'jours de série 🔥'),
     stat(last7.length, 'séances / 7 j'),
     stat(last30.length, 'séances / 30 j'),
@@ -55,14 +55,14 @@ export function renderProgress(root) {
       }, 'Enregistrer')),
     weightSummary(s.logs.weights, s.profile),
     h('p', { class: 'small muted' }, 'Pèse-toi le matin, à jeun, après être passé aux toilettes. Regarde la tendance sur 2-3 semaines, pas le chiffre d’un jour.'));
-  root.append(weightCard);
+  add(root, weightCard);
 
   // ---- Photos de progression (optionnel)
-  root.append(photosSection());
+  add(root, photosSection());
 
   // ---- Records caméra
   const recs = Object.entries(s.records);
-  root.append(h('section', { class: 'card' },
+  add(root, h('section', { class: 'card' },
     h('div', { class: 'card-title' }, '🏆 Records (validés par la caméra)'),
     recs.length ? h('div', { class: 'list' }, recs.map(([id, r]) => h('div', { class: 'list-row' },
       h('span', null, TRACKERS[id]?.label || id), h('span', { class: 'muted small' }, shortDate(r.date)),
@@ -73,7 +73,7 @@ export function renderProgress(root) {
   const tests = s.logs.tests;
   if (tests.length) {
     const keys = [['push', 'Pompes'], ['squat', 'Squats 1 min'], ['pull', 'Tractions'], ['plank', 'Gainage (s)']];
-    root.append(h('section', { class: 'card' },
+    add(root, h('section', { class: 'card' },
       h('div', { class: 'card-title' }, '🎯 Tests de niveau'),
       h('div', { class: 'list' }, keys.map(([k, label]) => {
         const vals = tests.filter((t) => t[k] !== null && t[k] !== undefined);
@@ -87,11 +87,11 @@ export function renderProgress(root) {
   }
 
   // ---- Historique
-  root.append(h('h2', { class: 'section-title' }, 'Historique des séances'));
+  add(root, h('h2', { class: 'section-title' }, 'Historique des séances'));
   if (!sessions.length) {
-    root.append(emptyState('📅', 'Aucune séance pour l’instant', 'Ta première séance apparaîtra ici.'));
+    add(root, emptyState('📅', 'Aucune séance pour l’instant', 'Ta première séance apparaîtra ici.'));
   } else {
-    root.append(h('div', { class: 'card list' }, [...sessions].reverse().slice(0, 30).map((x) => h('button', {
+    add(root, h('div', { class: 'card list' }, [...sessions].reverse().slice(0, 30).map((x) => h('button', {
       class: 'list-row clickable',
       onclick: () => sessionDetail(x, () => renderProgress(root)),
     },
@@ -161,7 +161,7 @@ function weightChart(weights, target) {
   </svg>`;
   const wrap = h('div', { class: 'chart-wrap' });
   wrap.innerHTML = svg;
-  wrap.append(h('div', { class: 'legend small muted' }, h('span', { class: 'lg line' }), ' pesées  ', h('span', { class: 'lg avg' }), ' moyenne 7 jours'));
+  add(wrap, h('div', { class: 'legend small muted' }, h('span', { class: 'lg line' }), ' pesées  ', h('span', { class: 'lg avg' }), ' moyenne 7 jours'));
   return wrap;
 }
 

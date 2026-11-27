@@ -1,5 +1,5 @@
 // Écran « Héros » : niveau, rang, statistiques, titres, trophées de boss.
-import { h, clear, toast } from '../ui.js';
+import { h, add, clear, toast } from '../ui.js';
 import { getState, update } from '../store.js';
 import { STATS, TITLES, RANKS, xpForLevel } from '../game/leveling.js';
 import { BOSSES } from '../game/bosses.js';
@@ -15,7 +15,7 @@ export function renderHero(root) {
   const title = TITLES.find((t) => t.id === g.equippedTitle);
   clear(root);
 
-  root.append(h('section', { class: 'hero-card', style: { '--rank': ps.rank.color } },
+  add(root, h('section', { class: 'hero-card', style: { '--rank': ps.rank.color } },
     h('div', { class: 'hc-top' },
       h('div', { class: 'avatar', style: { borderColor: ps.rank.color } }, (s.profile.name || '?').slice(0, 1).toUpperCase(), h('span', { class: 'avatar-rank', style: { background: ps.rank.color } }, ps.rank.id)),
       h('div', null,
@@ -27,7 +27,7 @@ export function renderHero(root) {
     h('div', { class: 'row between small muted' }, h('span', null, `${ps.into} / ${ps.next} XP`), h('span', null, `${g.xp} XP au total · 🔥 ${streak()} j`))));
 
   // Statistiques
-  root.append(h('section', { class: 'card' },
+  add(root, h('section', { class: 'card' },
     h('div', { class: 'card-title' }, '📊 Statistiques'),
     h('div', { class: 'stats-wrap' },
       radar(ps.stats),
@@ -37,14 +37,14 @@ export function renderHero(root) {
     h('p', { class: 'small muted' }, 'Tes stats montent toutes seules selon ce que tu fais : muscu → Force, cardio → Endurance, Muay Thai → Agilité, reps parfaites à la caméra → Technique, quêtes et régularité → Mental.')));
 
   // Rangs
-  root.append(h('section', { class: 'card' },
+  add(root, h('section', { class: 'card' },
     h('div', { class: 'card-title' }, '🏅 Rangs'),
     h('div', { class: 'ranks' }, RANKS.map((r) => h('div', { class: `rank-step${ps.level >= r.min ? ' on' : ''}`, style: { '--c': r.color } },
       h('b', null, r.id), h('span', null, `niv. ${r.min}`)))),
     h('p', { class: 'small muted' }, `Prochain niveau : ${xpForLevel(ps.level) - ps.into} XP. Gagne de l’XP avec les séances, les quêtes, la caméra et les boss.`)));
 
   // Titres
-  root.append(h('section', { class: 'card' },
+  add(root, h('section', { class: 'card' },
     h('div', { class: 'card-title' }, `🎖️ Titres (${g.titles.length}/${TITLES.length})`),
     h('p', { class: 'small muted' }, 'Touche un titre débloqué pour l’afficher sous ton nom.'),
     h('div', { class: 'title-grid' }, TITLES.map((t) => {
@@ -57,7 +57,7 @@ export function renderHero(root) {
     }))));
 
   // Trophées de boss
-  root.append(h('section', { class: 'card' },
+  add(root, h('section', { class: 'card' },
     h('div', { class: 'card-title' }, '🏆 Trophées de boss'),
     h('div', { class: 'trophies' }, BOSSES.map((b) => {
       const r = g.bosses[b.id];
@@ -67,7 +67,7 @@ export function renderHero(root) {
     })),
     h('button', { class: 'btn ghost small', onclick: () => navigate('#/arena') }, 'Aller à l’arène')));
 
-  root.append(h('div', { class: 'row gap wrap' },
+  add(root, h('div', { class: 'row gap wrap' },
     h('button', { class: 'btn ghost grow', onclick: () => navigate('#/progress') }, '📈 Mes progrès (poids, records…)'),
     h('button', { class: 'btn ghost grow', onclick: () => navigate('#/profile') }, '⚙️ Profil & réglages')));
 }

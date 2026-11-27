@@ -33,6 +33,13 @@ export function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/** Ajoute des enfants à un élément en ignorant null / undefined / false et en aplatissant les listes.
+ *  À utiliser à la place de el.append(...) (qui afficherait « null » ou « [object …] »). */
+export function add(parent, ...children) {
+  append(parent, children);
+  return parent;
+}
+
 export function clear(el) {
   while (el.firstChild) el.removeChild(el.firstChild);
   return el;

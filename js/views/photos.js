@@ -1,5 +1,5 @@
 // Section « Photos de progression » (optionnelle) : prise de photo, galerie, comparaison avant / après.
-import { h, clear, chips, modal, toast, confirmBox } from '../ui.js';
+import { h, add, clear, chips, modal, toast, confirmBox } from '../ui.js';
 import { getState, update } from '../store.js';
 import { addPhoto, listPhotos, deletePhoto, clearPhotos, photoUrl } from '../photos.js';
 import { todayISO, shortDate, daysBetween } from '../engine/dates.js';
@@ -14,9 +14,9 @@ export function photosSection() {
   const draw = async () => {
     clear(wrap);
     const enabled = getState().settings.photos === true;
-    wrap.append(h('div', { class: 'card-title' }, '📸 Photos de progression'));
+    add(wrap, h('div', { class: 'card-title' }, '📸 Photos de progression'));
     if (!enabled) {
-      wrap.append(
+      add(wrap,
         h('p', { class: 'small' }, 'Optionnel : prends une photo toutes les 4 semaines pour voir ton corps changer. C’est souvent plus motivant que la balance.'),
         h('p', { class: 'small muted' }, '🔒 Les photos restent uniquement sur cet appareil. Elles ne sont jamais envoyées, ni incluses dans l’export, ni visibles par tes amis.'),
         h('button', { class: 'btn ghost', onclick: () => { update((s) => { s.settings.photos = true; }); draw(); } }, 'Activer les photos de progression'));
@@ -24,7 +24,7 @@ export function photosSection() {
     }
     let pose = 'face';
     let photos = [];
-    try { photos = await listPhotos(); } catch (e) { wrap.append(h('p', { class: 'small warn-text' }, e.message)); }
+    try { photos = await listPhotos(); } catch (e) { add(wrap, h('p', { class: 'small warn-text' }, e.message)); }
     const last = photos[photos.length - 1];
     const due = !last || daysBetween(last.date, todayISO()) >= 28;
     const onFile = async (e) => {
@@ -43,7 +43,7 @@ export function photosSection() {
     };
     const takeInput = h('input', { type: 'file', accept: 'image/*', capture: 'user', hidden: true, onchange: onFile });
     const pickInput = h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: onFile });
-    wrap.append(
+    add(wrap,
       due ? h('div', { class: 'pill info' }, last ? '⏰ Ça fait 4 semaines : c’est le moment d’une nouvelle photo !' : 'Prends ta première photo « avant » 💪') : null,
       h('p', { class: 'small muted' }, 'Astuce : même endroit, même lumière, même heure (le matin), même tenue. Une photo de face, de profil et de dos.'),
       chips(POSES, pose, { multi: false, onChange: (v) => { pose = v; } }),
@@ -55,14 +55,14 @@ export function photosSection() {
       const byDate = {};
       photos.forEach((p) => { (byDate[p.date] = byDate[p.date] || []).push(p); });
       const dates = Object.keys(byDate).sort().reverse();
-      wrap.append(
+      add(wrap,
         photos.length >= 2 ? h('button', { class: 'btn ghost small', onclick: () => compareModal(photos) }, '↔️ Comparer avant / après') : null,
         h('div', { class: 'photo-days' }, dates.map((d) => h('div', { class: 'photo-day' },
           h('div', { class: 'small muted' }, `${shortDate(d)} · il y a ${daysBetween(d, todayISO())} j`),
           h('div', { class: 'photo-grid' }, byDate[d].map((p) => h('button', { class: 'photo-thumb', onclick: () => viewModal(p, draw), 'aria-label': `Photo ${p.pose} du ${shortDate(p.date)}` },
             h('img', { src: p.thumb, alt: '' }), h('span', null, p.pose))))))));
     }
-    wrap.append(h('button', {
+    add(wrap, h('button', {
       class: 'link small danger-link',
       onclick: async () => {
         if (!(await confirmBox('Désactiver les photos et supprimer toutes celles enregistrées sur cet appareil ?', { danger: true, ok: 'Supprimer' }))) return;
@@ -98,14 +98,14 @@ function compareModal(photos) {
   const draw = () => {
     clear(box);
     const list = photos.filter((p) => p.pose === pose);
-    if (list.length < 2) { box.append(h('p', { class: 'small muted' }, 'Il faut au moins 2 photos de cette pose.')); return; }
+    if (list.length < 2) { add(box, h('p', { class: 'small muted' }, 'Il faut au moins 2 photos de cette pose.')); return; }
     const before = list[0]; const after = list[list.length - 1];
     const ub = photoUrl(before); const ua = photoUrl(after);
     urls.push(ub, ua);
     const top = h('img', { class: 'cmp-after', src: ua, alt: 'Après' });
     const slider = h('input', { type: 'range', min: 0, max: 100, value: 50, class: 'cmp-range', 'aria-label': 'Comparer avant et après', oninput: (e) => { top.style.clipPath = `inset(0 0 0 ${e.target.value}%)`; } });
     top.style.clipPath = 'inset(0 0 0 50%)';
-    box.append(
+    add(box,
       h('div', { class: 'cmp-stage' }, h('img', { class: 'cmp-before', src: ub, alt: 'Avant' }), top,
         h('span', { class: 'cmp-label l' }, `Avant · ${shortDate(before.date)}`), h('span', { class: 'cmp-label r' }, `Après · ${shortDate(after.date)}`)),
       slider,

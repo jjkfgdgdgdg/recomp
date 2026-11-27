@@ -1,5 +1,5 @@
 // Minuteur de rounds Muay Thai autonome, avec coach vocal qui annonce les combinaisons.
-import { h, clear, chips, icon } from '../ui.js';
+import { h, add, clear, chips, icon } from '../ui.js';
 import { getState } from '../store.js';
 import { PhaseTimer, roundSteps } from '../timer.js';
 import { roundConfig } from '../data/muaythai.js';
@@ -23,7 +23,7 @@ export function renderTimer(root) {
 
   const renderSettings = () => {
     clear(settings);
-    settings.append(
+    add(settings,
       field('Rounds', chips([1, 2, 3, 4, 5, 6, 8, 10, 12].map((v) => ({ id: v, label: String(v) })), cfg.rounds, { multi: false, onChange: (v) => { cfg.rounds = v; reset(); } })),
       field('Durée du round', chips([60, 90, 120, 180, 240, 300].map((v) => ({ id: v, label: formatDuration(v) })), cfg.work, { multi: false, onChange: (v) => { cfg.work = v; reset(); } })),
       field('Repos', chips([15, 30, 45, 60, 90].map((v) => ({ id: v, label: `${v} s` })), cfg.rest, { multi: false, onChange: (v) => { cfg.rest = v; reset(); } })),
@@ -40,7 +40,7 @@ export function renderTimer(root) {
     time.textContent = formatDuration(cfg.work);
     combo.textContent = '';
     box.className = 'phase-box big';
-    clear(playBtn).append(icon('play'), ' Lancer');
+    add(clear(playBtn), icon('play'), ' Lancer');
     keepAwake(false);
   };
 
@@ -53,11 +53,11 @@ export function renderTimer(root) {
           label.textContent = step.label;
           time.textContent = formatDuration(remaining);
           box.className = `phase-box big k-${step.kind}`;
-          clear(playBtn).append(icon(running ? 'pause' : 'play'), running ? ' Pause' : ' Reprendre');
+          add(clear(playBtn), icon(running ? 'pause' : 'play'), running ? ' Pause' : ' Reprendre');
         },
         onCombo: (t) => { combo.textContent = t; combo.classList.remove('pop'); void combo.offsetWidth; combo.classList.add('pop'); },
         onStep: (st) => { if (st.kind !== 'work') combo.textContent = ''; },
-        onDone: () => { keepAwake(false); label.textContent = 'Terminé 🏆'; clear(playBtn).append(icon('refresh'), ' Recommencer'); pt = null; },
+        onDone: () => { keepAwake(false); label.textContent = 'Terminé 🏆'; add(clear(playBtn), icon('refresh'), ' Recommencer'); pt = null; },
       });
       keepAwake(true);
     }
@@ -65,7 +65,7 @@ export function renderTimer(root) {
   };
 
   renderSettings();
-  root.append(
+  add(root,
     h('section', { class: 'page-head' }, h('h1', null, '🥊 Minuteur de rounds'), h('p', { class: 'muted' }, 'Cloche, 10 dernières secondes signalées, et combinaisons annoncées à voix haute pendant le round.')),
     box,
     h('div', { class: 'row gap center' }, playBtn, h('button', { class: 'btn ghost', onclick: () => pt?.skip() }, 'Passer'), h('button', { class: 'btn ghost', onclick: reset }, 'Reset')),

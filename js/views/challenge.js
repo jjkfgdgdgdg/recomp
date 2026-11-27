@@ -1,5 +1,5 @@
 // Défis entre amis par lien : créer, relever, partager le classement. Aucun serveur.
-import { h, clear, modal, chips, toast, field, numInput } from '../ui.js';
+import { h, add, clear, modal, chips, toast, field, numInput } from '../ui.js';
 import { getState, update } from '../store.js';
 import {
   CHALLENGES, CHALLENGE, newChallenge, addScore, mergeChallenges, ranking, encodeChallenge, decodeChallenge, cleanName,
@@ -115,7 +115,7 @@ export function renderChallenge(root, params) {
   try {
     ch = decodeChallenge(params.c);
   } catch (e) {
-    root.append(h('section', { class: 'card alert' }, h('b', null, 'Lien de défi invalide'), h('p', { class: 'small' }, e.message), h('a', { class: 'btn ghost', href: '#/challenges' }, 'Mes défis')));
+    add(root, h('section', { class: 'card alert' }, h('b', null, 'Lien de défi invalide'), h('p', { class: 'small' }, e.message), h('a', { class: 'btn ghost', href: '#/challenges' }, 'Mes défis')));
     return;
   }
   ch = saveChallenge(ch);
@@ -123,7 +123,7 @@ export function renderChallenge(root, params) {
   const draw = (cur) => {
     clear(root);
     const hasProfile = !!getState().profile;
-    root.append(
+    add(root,
       h('section', { class: 'page-head' },
         h('div', { class: 'ch-emoji' }, c.emoji),
         h('h1', null, `Défi : ${c.label}`),
@@ -145,7 +145,7 @@ export function challengesSection() {
   const draw = () => {
     clear(wrap);
     const list = Object.values(getState().challenges || {}).sort((a, b) => (b.t || '').localeCompare(a.t || ''));
-    wrap.append(
+    add(wrap,
       h('div', { class: 'card-title' }, '👥 Défis entre amis'),
       h('p', { class: 'small muted' }, 'Lance un défi, envoie le lien sur WhatsApp ou Snap : tes potes font leur score et te renvoient le lien. Gratuit, sans compte, sans serveur.'),
       h('button', { class: 'btn primary', onclick: () => createModal(draw) }, '➕ Lancer un défi'),
@@ -179,5 +179,5 @@ function createModal(redraw) {
 
 export function renderChallenges(root) {
   clear(root);
-  root.append(h('section', { class: 'page-head' }, h('h1', null, '👥 Défis'), h('p', { class: 'muted' }, 'Affronte tes amis à distance, sans compte.')), challengesSection());
+  add(root, h('section', { class: 'page-head' }, h('h1', null, '👥 Défis'), h('p', { class: 'muted' }, 'Affronte tes amis à distance, sans compte.')), challengesSection());
 }

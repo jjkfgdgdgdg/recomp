@@ -1015,6 +1015,9 @@ export class JumpTracker extends BaseTracker {
 // ---------------------------------------------------------------------------
 // Registre
 // ---------------------------------------------------------------------------
+// Exercices qui se suivent avec le haut du corps seulement (pas besoin de voir les jambes).
+export const UPPER_ONLY = new Set(['curl', 'press', 'pullup', 'dips', 'row', 'guard']);
+
 export const TRACKERS = {
   pushup: { label: 'Pompes', mode: 'reps', view: 'Profil', place: 'Pose le téléphone au sol, de profil, à environ 2 m. Tout ton corps doit être dans l’image.', make: () => new PushupTracker() },
   knee_pushup: { label: 'Pompes sur les genoux', mode: 'reps', view: 'Profil', place: 'Téléphone au sol, de profil, à 2 m.', make: () => new PushupTracker({ knee: true }) },

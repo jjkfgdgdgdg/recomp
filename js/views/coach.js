@@ -1,5 +1,5 @@
 // Onglet « Coach caméra » : choisir un exercice, une série libre, un objectif ou un test de niveau.
-import { h, clear, modal, chips, toast } from '../ui.js';
+import { h, add, clear, modal, chips, toast } from '../ui.js';
 import { getState, update } from '../store.js';
 import { TRACKERS, TEMPO_TRACKERS } from '../pose/trackers.js';
 import { roundConfig } from '../data/muaythai.js';
@@ -32,18 +32,18 @@ const TESTS = [
 export function renderCoach(root) {
   const s = getState();
   clear(root);
-  root.append(h('section', { class: 'page-head' },
+  add(root, h('section', { class: 'page-head' },
     h('h1', null, 'Coach caméra'),
     h('p', { class: 'muted' }, 'Un squelette se dessine sur toi : il compte tes reps et corrige ta posture en direct. Tout est calculé sur ton téléphone, rien n’est envoyé.')));
 
-  root.append(h('section', { class: 'card soft' },
+  add(root, h('section', { class: 'card soft' },
     h('div', { class: 'card-title' }, '🎯 Tests de niveau'),
     h('p', { class: 'small muted' }, 'Refais-les toutes les 4 semaines : ton programme se recalibre avec tes nouveaux résultats.'),
     h('div', { class: 'row gap wrap' }, TESTS.map((t) => h('button', { class: 'btn ghost small', onclick: () => runTest(t, () => renderCoach(root)) }, t.label)))));
 
   GROUPS.forEach((g) => {
-    root.append(h('h2', { class: 'section-title' }, g.title));
-    root.append(h('div', { class: 'tracker-grid' }, g.ids.map((id) => {
+    add(root, h('h2', { class: 'section-title' }, g.title));
+    add(root, h('div', { class: 'tracker-grid' }, g.ids.map((id) => {
       const t = TRACKERS[id];
       const rec = s.records[id];
       return h('button', { class: 'tracker-card', onclick: () => configure(id) },
@@ -56,8 +56,8 @@ export function renderCoach(root) {
 
   const history = [...s.logs.coach].reverse().slice(0, 8);
   if (history.length) {
-    root.append(h('h2', { class: 'section-title' }, 'Dernières séries filmées'));
-    root.append(h('div', { class: 'card list' }, history.map((c) => {
+    add(root, h('h2', { class: 'section-title' }, 'Dernières séries filmées'));
+    add(root, h('div', { class: 'card list' }, history.map((c) => {
       const t = TRACKERS[c.trackerId];
       return h('div', { class: 'list-row' },
         h('span', null, EMOJI[c.trackerId] || '🎯', ' ', t?.label || c.trackerId),
@@ -66,7 +66,7 @@ export function renderCoach(root) {
     })));
   }
 
-  root.append(h('section', { class: 'card soft small' },
+  add(root, h('section', { class: 'card soft small' },
     h('b', null, 'Astuces pour une détection parfaite'),
     h('ul', { class: 'bullets' },
       h('li', null, 'Pose le téléphone contre un mur ou une bouteille, à 2-3 m.'),
@@ -90,9 +90,9 @@ function configure(id) {
     clear(extra);
     if (mode === 'target') {
       const vals = t.mode === 'hold' ? [20, 30, 45, 60, 90, 120] : [5, 8, 10, 12, 15, 20, 30];
-      extra.append(chips(vals.map((v) => ({ id: v, label: t.mode === 'hold' ? `${v} s` : `${v}` })), target, { multi: false, onChange: (v) => { target = v; } }));
+      add(extra, chips(vals.map((v) => ({ id: v, label: t.mode === 'hold' ? `${v} s` : `${v}` })), target, { multi: false, onChange: (v) => { target = v; } }));
     } else if (mode === 'rounds') {
-      extra.append(chips([1, 2, 3, 4, 5, 6].map((v) => ({ id: v, label: `${v} round${v > 1 ? 's' : ''}` })), rounds, { multi: false, onChange: (v) => { rounds = v; } }));
+      add(extra, chips([1, 2, 3, 4, 5, 6].map((v) => ({ id: v, label: `${v} round${v > 1 ? 's' : ''}` })), rounds, { multi: false, onChange: (v) => { rounds = v; } }));
     }
   };
   renderExtra();
