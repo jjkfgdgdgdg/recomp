@@ -32,7 +32,7 @@ jobs:
         run: npm test
       - name: Préparer les fichiers du site
         run: node tools/build-www.mjs && touch www/.nojekyll
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v3
         with:
           path: www
